@@ -32,13 +32,12 @@ THE SOFTWARE." >> LICENSE
 git add --all
 git commit -m "Initial commit"
 
-echo Enter repository name:
-read reponame
+#echo Enter repository name:
+#read reponame
 git remote add origin https://github.com/<YourGitHubSite>/"$reponame".git
-# curl -u 'dcorns' https://api.github.com/user/repos -d '{"name":"dcorns/bash_scripts.git"}'
-curl -u '<YourGitHubUserName>' https://api.github.com/user/repos -d '{"name":"$reponame".git}'
+#curl -u 'username' https://api.github.com/user/repos -d '{"name":"projectname","description":"This project is a test"}'
 
-git push -u origin master
+#git push -u origin master
 
 git branch testing
 

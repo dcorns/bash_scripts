@@ -32,12 +32,11 @@ THE SOFTWARE." >> LICENSE
 git add --all
 git commit -m "Initial commit"
 
-#echo Enter repository name:
-#read reponame
-git remote add origin https://github.com/<YourGitHubSite>/"$reponame".git
-#curl -u 'username' https://api.github.com/user/repos -d '{"name":"projectname","description":"This project is a test"}'
-
-#git push -u origin master
+echo Enter repository name:
+read reponame
+echo
+echo Enter description:
+read repodisc
 
 git branch testing
 
@@ -70,4 +69,7 @@ build/Release
 # see https://npmjs.org/doc/faq.html#Should-I-check-my-node_modules-folder-into-git
 node_modules" >> .gitignore
 
-
+echo "Enter the following commands to complete the setup"
+echo
+echo "curl -u 'yourusername' https://api.github.com/user/repos -d '{\"name\":\"$reponame\",\"description\":\"$repodisc\"}'"
+echo "git push -u origin master"

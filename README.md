@@ -1,5 +1,12 @@
 bash-scripts
-To run them change to the directory where you downloaded them and preceed the script that you want to install with bash (bash Ichrome.sh)
+To run them change to the directory where you downloaded them and preceed the script that you want to run with bash (bash Ichrome.sh)
+
+alternativly change the permissions on the script: (chmod u+x extraGitInit.sh) and you will be able to run them by typing in the name alone.
+
+You could also create a directory to keep them in and add it to your path variable (export PATH="$PATH:~/scripts") so you can run them from any where.
+
+Furthermore, create a symbolic link to save yourself some typing (ln -s /data/scripts/extraGitInit.sh ginit)
+
 
 These scripts are useful primarily for setting up a developement system after a fresh install of a Fedora20 distro of linux; however some of them may be useful for other distros as well.
 

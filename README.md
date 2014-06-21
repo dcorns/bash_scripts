@@ -7,18 +7,18 @@ You could also create a directory to keep them in and add it to your path variab
 
 Furthermore, create a symbolic link to save yourself some typing (ln -s /data/scripts/extraGitInit.sh ginit)
 
-
+########### Fedora Development Setup Scripts ###########
 These scripts are useful primarily for setting up a developement system after a fresh install of a Fedora20 distro of linux; however some of them may be useful for other distros as well.
 
-Before using these scripts, you will definetly want to run 'sudo yum update -y' to get all the existing packages up to date.
+Before using these scripts, you will want to run 'sudo yum update -y' to get all the existing packages up to date.
 
-If you are using these scripts to install an entire developement environment on fedora, make sure to do them in the order listed here. Some scripts will require a restart before the settings will take effect.
+If you are using these scripts to install an entire development environment on fedora, make sure to do them in the order listed here. Some scripts will require a restart before the settings will take effect.
 
 Ichrome.sh--Installs google chrome and adds it to the application menu.
 
 Iruby.sh--Installs the latest ruby and the rvm version manager for ruby
 
-Isublime.sh--Installs sublimeText3 alonge with a number of packages for making it more useful for developement. Take a look at line 45 if you want to add or subtract the packages that will be installed.
+Isublime.sh--Installs sublimeText3 along with a number of packages for making it more useful for development. Take a look at line 45 if you want to add or subtract the packages that will be installed.
 
 Inode.sh--Installs and configures the latest version of nodejs and npm
 
@@ -28,10 +28,11 @@ Igit--installs git and runs some interactive prompts for setting some of the glo
 
 ########### Additional Scripts ###########
 
-These scripts are intended to be useful on any distro and in some case on both linux and mac.
+These scripts are intended to be useful on any distro and in most cases on both linux and mac.
 
-extraGitinit.sh--This will initialize a local git, create an MIT License file and a blank README.md, create a matching repository on github and a remote to push and pull with. It also adds a testing branch to the local git. You must first alter lines 37 and 39 to by replacing <YourGitHubSite> with your git hub site and <YourGitHubUserName> with your git hub user name. After doing that I would suggest setting up a symbolic link to it as it will prove quite useful if you are doing alot of projects.
+extraGitinit.sh--This will initialize a local git, create an MIT License file and a blank README.md, create a matching repository on github and a remote to push and pull with. It also adds a testing branch to the local git. You must first alter lines 37 and 39 to by replacing <YourGitHubSite> with your git hub site and <YourGitHubUserName> with your git hub user name. After doing that I would suggest setting up a symbolic link to it as it will prove quite useful if you are doing a lot of projects.
 
+lnpm--This, when completed will solve the problem of have node_modules installed in every directory in which you have a node project. It will allow node modules to be read from a centralized directory on the file system and when a particular package does not exist it will download the package to the centralized directory for continued use. No more downloading packages everytime you start a new node project and no longer have node packages spread out all over your hard drive
 
 ############################ Additional Information ##############################
 Check back for more bash scripts as I will be adding them as I discover new ways to use them to help make me a more productive developer.

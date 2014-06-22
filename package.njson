@@ -1,0 +1,40 @@
+{
+"name": "bashscripts",
+"version": "0.0.0",
+"description": "bash-scripts To run them change to the directory where you downloaded them and preceed the script that you want to run with bash (bash Ichrome.sh)",
+"main": "index.js",
+nd$ express :~ "3.5.0" ,
+"scripts": {
+"test": "echo \"Error: no test specified\" && exit 1"
+},
+"repository": {
+"type": "git",
+"url": "https://github.com/dcorns/bash_scripts.git"
+},
+"author": "",
+"license": "ISC",
+"bugs": {
+"url": "https://github.com/dcorns/bash_scripts/issues"
+},
+"homepage": "https://github.com/dcorns/bash_scripts"
+}
+{
+"name": "bashscripts",
+"version": "0.0.0",
+"description": "bash-scripts To run them change to the directory where you downloaded them and preceed the script that you want to run with bash (bash Ichrome.sh)",
+"main": "index.js",
+/data/Projects/node_modules/express:~ "3.5.0",
+"scripts": {
+"test": "echo \"Error: no test specified\" && exit 1"
+},
+"repository": {
+"type": "git",
+"url": "https://github.com/dcorns/bash_scripts.git"
+},
+"author": "",
+"license": "ISC",
+"bugs": {
+"url": "https://github.com/dcorns/bash_scripts/issues"
+},
+"homepage": "https://github.com/dcorns/bash_scripts"
+}

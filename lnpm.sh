@@ -5,6 +5,8 @@ nd='/data/Projects/node_modules/'
 #set current directory
 cwd=$(pwd)
 havepackage=false
+dependency=false
+devdependency=false
 #see if the package exists in the local directory
 cd $nd
 m=$(ls $2 -d)
@@ -51,12 +53,16 @@ echo 'adding' $2 'version' $ver "to package.json"
 
 #extract package.json lines to array
 declare -a pkg
+touch package.njson
 readarray -t pkg < package.json
+
 while (( ${#pkg[@]} > i )); do
     pkgline=${pkg[i++]}
-    dep=$(echo $pkgline | grep -o 'main')
-    if [ $dep = 'main' ]; then
-    echo ${dep}
+    echo $pkgline >> package.njson
+    dep=$(echo $pkgline | grep -o 'dependencies')
+    #if the result is invalid the if statement will generate error however program still executes as expected
+    if [ $dep = 'dependencies' ]; then
+    echo $nd$2":~"$ver"," >> package.njson
     fi
 
 

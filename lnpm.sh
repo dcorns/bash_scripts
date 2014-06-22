@@ -53,7 +53,11 @@ echo 'adding' $2 'version' $ver "to package.json"
 declare -a pkg
 readarray -t pkg < package.json
 while (( ${#pkg[@]} > i )); do
-    echo ${pkg[i++]}
+    pkgline=${pkg[i++]}
+    dep=$(echo $pkgline | grep -o 'main')
+    if [ $dep = 'main' ]; then
+    echo ${dep}
+    fi
+
+
 done
-
-

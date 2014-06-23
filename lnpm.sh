@@ -5,8 +5,9 @@ nd='/data/Projects/node_modules/'
 #set current directory
 cwd=$(pwd)
 havepackage=false
-dependency=false
-devdependency=false
+havedependencies=false
+havedevdependencies=false
+isdevdependency=false
 #see if the package exists in the local directory
 cd $nd
 m=$(ls $2 -d)
@@ -21,7 +22,7 @@ else
     havepackage=true
   else
     echo 'package does not exist in directory or in registry'
-    exit
+    exit 0
     fi
     fi
 #if the package exists, get the version
@@ -32,7 +33,7 @@ vers=${ver#*:}
 ver=${vers%*,}
 else
 echo 'Package' $2 'not found locally or externally'
-exit
+exit 0
 fi
 #check for package.json and npm init if it does not exist
 cd $cwd
@@ -42,12 +43,20 @@ echo "found package.json"
 else
 npm init
 fi
+#Check package for dependencies and devdependencies objects
+checkdep=$(grep '"dependencies"' package.json)
+if [ $checkdep = '"dependencies"' ]; then
+havedependencies=true
+fi
+checkdep=$(grep '"devdependencies"' package.json)
+if [ $checkdep = '"devdependencies"' ]; then
+havedevdependencies=true
+fi
 #check for parameter 3 -dev to find out wether or not to just add as dependency or also as dev dependency
 depends='"dependencies"'
 if [ $3 = '-dev' ]; then
-depends='"Devdependencies"'
+isdevdependency=true
 fi
-echo $depends
 
 echo 'adding' $2 'version' $ver "to package.json"
 
@@ -55,15 +64,32 @@ echo 'adding' $2 'version' $ver "to package.json"
 declare -a pkg
 touch package.njson
 readarray -t pkg < package.json
-
-while (( ${#pkg[@]} > i )); do
-    pkgline=${pkg[i++]}
-    echo $pkgline >> package.njson
-    dep=$(echo $pkgline | grep -o 'dependencies')
-    #if the result is invalid the if statement will generate error however program still executes as expected
-    if [ $dep = 'dependencies' ]; then
-    echo $nd$2":~"$ver"," >> package.njson
-    fi
-
-
-done
+if [ $havedependendies = true ]; then
+    while (( ${#pkg[@]} > i )); do
+        pkgline=${pkg[i++]}
+        echo $pkgline >> package.njson
+        dep=$(echo $pkgline | grep -o 'dependencies')
+        #if the result is invalid the if statement will generate error however program still executes as expected
+        if [ $dep = 'dependencies' ]; then
+            echo $nd$2":~"$ver"," >> package.njson
+        fi
+    done
+else
+    size=${#pkg[@]}
+    echo $size
+    count=1
+    while (( ${#pkg[@]} > i )); do
+        pkgline=${pkg[i++]}
+        echo $pkgline >> package.njson
+        dep=$(echo $pkgline | grep -o 'dependencies')
+        #if the result is invalid the if statement will generate error however program still executes as expected
+        if [ $size-2 = $count ]; then
+            depends='"dependencies"'
+            echo $depends '{' >> package.njson
+            echo $nd$2":~"$ver >> package.njson
+            echo "}" >> package.njson
+        fi
+        let count+=1
+        echo $count
+    done
+fi

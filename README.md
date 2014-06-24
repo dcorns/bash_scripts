@@ -31,8 +31,22 @@ Igit--installs git and runs some interactive prompts for setting some of the glo
 These scripts are intended to be useful on any distro and in most cases on both linux and mac.
 
 extraGitinit.sh--This will initialize a local git, create an MIT License file and a blank README.md, create a matching repository on github and a remote to push and pull with. It also adds a testing branch to the local git. You must first alter lines 37 and 39 to by replacing <YourGitHubSite> with your git hub site and <YourGitHubUserName> with your git hub user name. After doing that I would suggest setting up a symbolic link to it as it will prove quite useful if you are doing a lot of projects.
+##################### lnpm.sh Manage and distribute node package functionality in local file structure ##############################################
+lnpm--This, when completed will solve the problem of have node_modules installed in every directory in which you have a node project. It will allow node modules to be read from a centralized directory on the file system and when a particular package does not exist it will download the package to the centralized directory for continued use. No more downloading packages every time you start a new node project and no longer have node packages spread out all over your hard drive.
 
-lnpm--This, when completed will solve the problem of have node_modules installed in every directory in which you have a node project. It will allow node modules to be read from a centralized directory on the file system and when a particular package does not exist it will download the package to the centralized directory for continued use. No more downloading packages everytime you start a new node project and no longer have node packages spread out all over your hard drive
+lnpm.sh install <module_name>
+Searches the local directory specified in $nd for the module and if it exist it will do the following as needed:
+If no package.json exists, it will run npm.init to interactively create it.
+If no dependencies object exists, it will add it to the package.json.
+If no reference to the module exists in the dependencies object, it will be added with fixed/latest version, otherwise it will notify that the package is already installed.
+remaining install dev tasks: Complete installation of devdependency option
+
+lnpm.sh update
+Need to implement for updating the local folder modules
+
+Overall problems to overcome:
+There are different versions of node packages. One may be used in one project and a different version in another project. If the local node_modules folder is simply updated, it will replace the existing version of a module. This will be problematic since projects using older versions will no longer be able to access the version of the module on which it relies.
+proposed solution: Add version information of each module to the directory name. Add an 'update' parameter to lnpm that creates the directory structure accordingly when updating from repository. Modify lnpm install to do the same when it adds a missing module from the registry.
 
 ############################ Additional Information ##############################
 Check back for more bash scripts as I will be adding them as I discover new ways to use them to help make me a more productive developer.

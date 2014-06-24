@@ -24,7 +24,7 @@ checkobject(){
     checkdep=${checkdep:0:17}
     if [ $checkdep = '"devdependencies"' ]; then
         havedevdependencies=true
-    fi
+    fi;
 }
 #check for package.json and npm init if it does not exist
 cd $cwd
@@ -34,19 +34,16 @@ if [ $pkg = 'package.json' ]; then
     #see if package is already installed
     installpackage=$(grep $nd$2 package.json)
     installpackage=${installpackage:0:ndlength+=pkglength}
-    echo $installpackage
     if [ $installpackage = $nd$2 ]; then
         echo $2 'already installed'
         #check if installed as devdependency or just dependency, and if dev flag set handle devdependency
         #check installed version against stored version offer change if not matched
         exit 0
-    else
-        checkobject
     fi
 else
 npm init
 fi
-
+checkobject
 
 #see if the package exists in the local directory
 cd $nd
@@ -84,22 +81,25 @@ isdevdependency=true
 fi
 
 echo 'adding' $2 'version' $ver "to package.json"
-
+cd $cwd
 #extract package.json lines to array
 declare -a pkg
 touch package.njson
 readarray -t pkg < package.json
-if [ $havedependendies = true ]; then
+
+if [ $havedependencies = true ]; then
+    echo 'Executing only one dependency'
     while (( ${#pkg[@]} > i )); do
         pkgline=${pkg[i++]}
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'dependencies')
         #if the result is invalid the if statement will generate error however program still executes as expected
         if [ $dep = 'dependencies' ]; then
-            echo $nd$2":~"$ver"," >> package.njson
+            echo $nd$2":" $ver"," >> package.njson
         fi
     done
 else
+    echo 'executing add dependency structure'
     size=${#pkg[@]}
     let size-=1
     count=1

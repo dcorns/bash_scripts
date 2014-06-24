@@ -2,12 +2,52 @@
 
 #set the local node modules directory here
 nd='/data/Projects/node_modules/'
+ndlength=${#nd}
+pkglength=${#2}
 #set current directory
 cwd=$(pwd)
 havepackage=false
+packageinstalled=false
+devpackageinstalled=false
 havedependencies=false
 havedevdependencies=false
 isdevdependency=false
+
+checkobject(){
+    #Check package for dependencies and devdependencies objects
+    checkdep=$(grep '"dependencies"' package.json)
+    checkdep=${checkdep:0:14}
+    if [ $checkdep = '"dependencies"' ]; then
+        havedependencies=true
+    fi
+    checkdep=$(grep '"devdependencies"' package.json)
+    checkdep=${checkdep:0:17}
+    if [ $checkdep = '"devdependencies"' ]; then
+        havedevdependencies=true
+    fi
+}
+#check for package.json and npm init if it does not exist
+cd $cwd
+pkg=$(find package.json)
+if [ $pkg = 'package.json' ]; then
+    echo "found package.json"
+    #see if package is already installed
+    installpackage=$(grep $nd$2 package.json)
+    installpackage=${installpackage:0:ndlength+=pkglength}
+    echo $installpackage
+    if [ $installpackage = $nd$2 ]; then
+        echo $2 'already installed'
+        #check if installed as devdependency or just dependency, and if dev flag set handle devdependency
+        #check installed version against stored version offer change if not matched
+        exit 0
+    else
+        checkobject
+    fi
+else
+npm init
+fi
+
+
 #see if the package exists in the local directory
 cd $nd
 m=$(ls $2 -d)
@@ -35,23 +75,8 @@ else
 echo 'Package' $2 'not found locally or externally'
 exit 0
 fi
-#check for package.json and npm init if it does not exist
-cd $cwd
-pkg=$(find package.json)
-if [ $pkg = 'package.json' ]; then
-echo "found package.json"
-else
-npm init
-fi
-#Check package for dependencies and devdependencies objects
-checkdep=$(grep '"dependencies"' package.json)
-if [ $checkdep = '"dependencies"' ]; then
-havedependencies=true
-fi
-checkdep=$(grep '"devdependencies"' package.json)
-if [ $checkdep = '"devdependencies"' ]; then
-havedevdependencies=true
-fi
+
+
 #check for parameter 3 -dev to find out wether or not to just add as dependency or also as dev dependency
 depends='"dependencies"'
 if [ $3 = '-dev' ]; then
@@ -76,20 +101,23 @@ if [ $havedependendies = true ]; then
     done
 else
     size=${#pkg[@]}
-    echo $size
+    let size-=1
     count=1
     while (( ${#pkg[@]} > i )); do
         pkgline=${pkg[i++]}
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'dependencies')
         #if the result is invalid the if statement will generate error however program still executes as expected
-        if [ $size-2 = $count ]; then
+        if [ $size = $count ]; then
             depends='"dependencies"'
-            echo $depends '{' >> package.njson
-            echo $nd$2":~"$ver >> package.njson
+            echo $depends': {' >> package.njson
+            echo $nd$2 ":" $ver >> package.njson
             echo "}" >> package.njson
         fi
         let count+=1
-        echo $count
     done
 fi
+
+#replace package.json with modified
+rm package.json
+mv package.njson package.json

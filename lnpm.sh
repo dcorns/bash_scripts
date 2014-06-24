@@ -22,7 +22,25 @@ nd='/data/Projects/node_modules/'
 
 #break down install and update
 if [ "$1" = 'update' ]; then
-echo 'update chosen'
+    if [ "$2" = '' ]; then
+        echo 'update all chosen: This could take a while. To avoid this include a package to update as the second parameter'
+        echo "Enter 'yes' to continue"
+        read
+        if [ "$REPLY" = 'yes' ]; then
+            echo 'Polling latest local versions'
+            #Create temp directory for module proccessing
+            cd $nd
+            mkdir incoming_modules
+            cd incoming_modules
+            cd ..
+            rm incoming_modules -R
+        else
+            echo 'user canceled'
+            exit 0
+        fi
+    else
+        echo 'module included'
+    fi
 else
 ndlength=${#nd}
 pkglength=${#2}

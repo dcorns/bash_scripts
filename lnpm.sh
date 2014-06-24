@@ -11,6 +11,7 @@ esac
 
 case $3 in
     '-dev') ;;
+    '') ;;
     *) echo 'The third parameter must be -dev or null'
        exit 0
        ;;
@@ -18,6 +19,11 @@ esac
 
 #set the local node modules directory here
 nd='/data/Projects/node_modules/'
+
+#break down install and update
+if [ "$1" = 'update' ]; then
+echo 'update chosen'
+else
 ndlength=${#nd}
 pkglength=${#2}
 #set current directory
@@ -212,3 +218,4 @@ fi
 #replace package.json with modified
 rm package.json
 mv package.njson package.json
+fi

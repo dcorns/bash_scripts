@@ -26,3 +26,8 @@ node_modules
 
 #Webstorm
 .idea/
+
+#testing/utility files
+package.json
+package.njson
+devtmp

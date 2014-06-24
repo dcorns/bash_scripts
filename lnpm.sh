@@ -1,5 +1,21 @@
 #!/bin/sh
 clear
+#validate input
+case $1 in
+    'install') ;;
+    'update') ;;
+    *) echo 'The first parameter must be install or update'
+       exit 0
+       ;;
+esac
+
+case $3 in
+    '-dev') ;;
+    *) echo 'The third parameter must be -dev or null'
+       exit 0
+       ;;
+esac
+
 #set the local node modules directory here
 nd='/data/Projects/node_modules/'
 ndlength=${#nd}

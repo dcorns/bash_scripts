@@ -39,7 +39,10 @@ Searches the local directory specified in $nd for the module and if it exist it 
 If no package.json exists, it will run npm.init to interactively create it.
 If no dependencies object exists, it will add it to the package.json.
 If no reference to the module exists in the dependencies object, it will be added with fixed/latest version, otherwise it will notify that the package is already installed.
-remaining install dev tasks: Complete installation of devdependency option
+
+lnpm.sh install <module_name> -dev
+Performs all the tasks of regular install but also will perform the same steps to add as a dev dependency
+If both dependencies and devDependencies have a reference to the module it will exit with package is already installed notification.
 
 lnpm.sh update
 Need to implement for updating the local folder modules

@@ -54,7 +54,24 @@ done
 exit 0
 }
 
+#add latest packages from npm registry to local directory
+updatePackages(){
+cd $nd
+#Create a temp directory and copy all modules over, striping them their version from directory name
+#Run npm install
+#Configure the temp directories and copy what does not already exist to the local folder, then remove temp directory and contents
 
+}
+
+#revert the local folder or some other folder to standard package names
+revertDirs(){
+echo 'revert directories'
+}
+
+#copy packages to project directory revert directory names and update package.json for deployment
+preDeploy(){
+echo 'preDeploy'
+}
 #validate input
 case $1 in
     'install') ;;

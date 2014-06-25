@@ -2,7 +2,9 @@
 clear
 #set the local node modules directory here
 nd='/data/Projects/node_modules/'
-
+#define colors
+red='\e[0;31m'
+green='\e[0;32m'
 #******************************************Major Functions**********************************************************
 #Configure existing directory that already contains normal node modules to work with lnpm
 setupDirs(){
@@ -15,17 +17,37 @@ setupDirs(){
 
     cd "$dirname"
     ver=$(grep '"version"' package.json)
-    pkgname=$(grep '"name"' package.json)
-    #need to parc out the name from pkgname simular to the extraction of version number below
-    echo $pkgname
+    pkgname=$(grep '"_id"' package.json)
+    pkgnm=${pkgname#*:} #remove everything left of the colon
+    pknm=${pkgnm%*,}
+    pknmlength=${#pknm}
+    charvalid=true
+    count=1
+    pknam=''
+    #extract everything left of the @ to retrieve package name
+    while (( count < $pknmlength )); do
+    testval=${pknm:count:1}
+    if [ $testval == "@" ]; then
+    charvalid=false
+    fi
+    if [ $charvalid = true ]; then
+    pknam=$pknam${pknm:count:1}
+    fi
+    let count+=1
+    done
+    pknam=${pknam:1:${#pknam}-1}
+    #extract from version field to retrieve version number
     vers=${ver#*:} #remove everything left of the colon
     ver=${vers%*,} #drop the comma
-    newdir=$dirname$ver
-    if [ "$newdir" != "$dirname" ]; then
+    newdir=$pknam$ver
     cd ..
-    echo $newdir
+    #if the directory does not have a version number with name add it here otherwise leave alone
+    if [ "$newdir" != "$dirname" ]; then
+        mv $dirname "$newdir"
+        echo 'Converted' $dirname 'to' $newdir
+    else
+        echo $dirname 'already prepared, nothing to do.'
     fi
-    #mv $dirname "$newdir"
 done
 exit 0
 }
@@ -35,10 +57,13 @@ exit 0
 case $1 in
     'install') ;;
     'update') ;;
-    'configure') setupDirs ;;
-    *) echo 'The first parameter must be install, configure or update'
-       exit 0
-       ;;
+    'configure')
+        setupDirs
+     ;;
+    *)
+        echo 'The first parameter must be install, configure or update'
+        exit 0
+    ;;
 esac
 
 case $3 in

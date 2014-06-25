@@ -1,4 +1,5 @@
 #!/bin/sh
+#Created by Dale Corns codefellow@gmail.com 2014
 clear
 #set the local node modules directory here
 nd='/data/Projects/node_modules/'
@@ -65,7 +66,52 @@ cd $nd
 
 #revert the local folder or some other folder to standard package names
 revertDirs(){
-echo 'revert directories'
+cd $nd
+echo -e ${yellow}'Reverting local node package directories, this will make them no longer function with nlpm'${default}
+for path in $nd*; do
+    [ -d "${path}" ] || continue # if not a directory, skip
+    dirname="$(basename "${path}")"
+
+    cd "$dirname"
+    echo $dirname
+    #delete everything in directory name from space to end
+
+
+    revdir=${dirname%'/"'} #remove everything right of the project name
+    echo $revdir
+    #pknm=${pkgnm%*,}
+    #pknmlength=${#pknm}
+    #charvalid=true
+    #count=1
+    #pknam=''
+    #extract everything left of the @ to retrieve package name
+    #while (( count < $pknmlength )); do
+    #testval=${pknm:count:1}
+    #if [ $testval == "@" ]; then
+    #charvalid=false
+    #fi
+    #if [ $charvalid = true ]; then
+    #pknam=$pknam${pknm:count:1}
+    #fi
+    #let count+=1
+    #done
+    #pknam=${pknam:1:${#pknam}-1}
+    revdir=$(echo $dirname | grep -o '$pknam')
+    echo $revdir
+    #extract from version field to retrieve version number
+    #vers=${ver#*:} #remove everything left of the colon
+    #ver=${vers%*,} #drop the comma
+    #newdir=$pknam$ver
+    cd ..
+    #if the directory does not have a version number with name add it here otherwise leave alone
+    #if [ "$newdir" != "$dirname" ]; then
+        #mv $dirname "$newdir"
+        #echo -e ${green}'Converted' $dirname 'to' $newdir${default}
+    #else
+        #echo -e ${yellow}$dirname 'already prepared, nothing to do.'${default}
+    #fi
+done
+exit 0
 }
 
 #copy packages to project directory revert directory names and update package.json for deployment
@@ -79,8 +125,12 @@ case $1 in
     'configure')
         setupDirs
      ;;
+    'revert')
+        revertDirs
+    ;;
     *)
-        echo -e ${red}'The first parameter must be install, configure or update'${default}
+        echo -e ${red}'Invalid First Parameter'${default}
+        echo -e ${green}'Valid First Parameters are: install, configure, update, revert and deploy'${default}
         exit 0
     ;;
 esac

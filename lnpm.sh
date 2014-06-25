@@ -12,14 +12,20 @@ setupDirs(){
     for path in $nd*; do
     [ -d "${path}" ] || continue # if not a directory, skip
     dirname="$(basename "${path}")"
-    cd $dirname
+
+    cd "$dirname"
     ver=$(grep '"version"' package.json)
-vers=${ver#*:} #remove everything left of the colon
-ver=${vers%*,} #drop the comma
+    pkgname=$(grep '"name"' package.json)
+    #need to parc out the name from pkgname simular to the extraction of version number below
+    echo $pkgname
+    vers=${ver#*:} #remove everything left of the colon
+    ver=${vers%*,} #drop the comma
     newdir=$dirname$ver
+    if [ "$newdir" != "$dirname" ]; then
     cd ..
     echo $newdir
-    mv $dirname "$newdir"
+    fi
+    #mv $dirname "$newdir"
 done
 exit 0
 }

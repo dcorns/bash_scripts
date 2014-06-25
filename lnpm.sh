@@ -5,6 +5,8 @@ nd='/data/Projects/node_modules/'
 #define colors
 red='\e[0;31m'
 green='\e[0;32m'
+yellow='\e[1;33m'
+default='\e[0m'
 #******************************************Major Functions**********************************************************
 #Configure existing directory that already contains normal node modules to work with lnpm
 setupDirs(){
@@ -44,9 +46,9 @@ setupDirs(){
     #if the directory does not have a version number with name add it here otherwise leave alone
     if [ "$newdir" != "$dirname" ]; then
         mv $dirname "$newdir"
-        echo 'Converted' $dirname 'to' $newdir
+        echo -e ${green}'Converted' $dirname 'to' $newdir${default}
     else
-        echo $dirname 'already prepared, nothing to do.'
+        echo -e ${yellow}$dirname 'already prepared, nothing to do.'${default}
     fi
 done
 exit 0
@@ -61,7 +63,7 @@ case $1 in
         setupDirs
      ;;
     *)
-        echo 'The first parameter must be install, configure or update'
+        echo -e ${red}'The first parameter must be install, configure or update'${default}
         exit 0
     ;;
 esac
@@ -69,7 +71,7 @@ esac
 case $3 in
     '-dev') ;;
     '') ;;
-    *) echo 'The third parameter must be -dev or null'
+    *) echo -e ${red}'The third parameter must be -dev or null'${default}
        exit 0
        ;;
 esac
@@ -77,7 +79,7 @@ esac
 #break down install and update
 if [ "$1" = 'update' ]; then
     if [ "$2" = '' ]; then
-        echo 'update all chosen: This could take a while. To avoid this include a package to update as the second parameter'
+        echo -e ${yellow}'update all chosen: This could take a while. To avoid this include a package to update as the second parameter'${default}
         echo "Enter 'yes' to continue"
         read
         if [ "$REPLY" = 'yes' ]; then
@@ -89,11 +91,11 @@ if [ "$1" = 'update' ]; then
             cd ..
             rm incoming_modules -R
         else
-            echo 'user canceled'
+            echo -e ${red}'user canceled'${default}
             exit 0
         fi
     else
-        echo 'module included'
+        echo -e ${yellow}'module included'${default}
     fi
 else
 #*************************************lnpm install code******************************************************
@@ -126,7 +128,7 @@ checkobject(){
 cd $cwd
 pkg=$(find package.json)
 if [ "$pkg" = 'package.json' ]; then
-    echo "found package.json"
+    echo -e ${green}"found package.json"${default}
     #see if package is already installed
     installpackage=$(grep $nd$2 package.json)
     installpackage=${installpackage:0:ndlength+=pkglength}
@@ -163,7 +165,7 @@ if [ "$pkg" = 'package.json' ]; then
                     #check resulting file(which should contain all devDependencies modules) for $nd$2
                 devtest=$(grep -o $nd$2 devtmp)
                 if [ $? = 0 ]; then
-                    echo $2 'already installed'
+                    echo -e ${yellow}$2 'already installed'${default}
                     rm devtmp
                     exit 0
                 fi
@@ -171,11 +173,11 @@ if [ "$pkg" = 'package.json' ]; then
             fi
             exit 0
             if [ "$devDependencies" = "$nd$2" ]; then
-                echo $2 'already installed'
+                echo -e ${yellow}$2 'already installed'${default}
                 exit 0
             fi
         else
-            echo $2 'already installed'
+            echo -e ${yellow}$2 'already installed'${default}
             exit 0
         fi
         #check installed version against stored version offer change if not matched
@@ -190,7 +192,7 @@ cd $nd
 m=$(ls $2 -d)
 if [ $m = $2 ]; then
   havepackage=true
-  echo 'package found in local directory' $nd
+  echo -e ${green}'package found in local directory' $nd${default}
 #not in local directory, download it if it exists
 else
   npm install 2$
@@ -198,7 +200,7 @@ else
   if [ $m = $2 ]; then
     havepackage=true
   else
-    echo 'package does not exist in directory or in registry'
+    echo -e ${red}'package does not exist in directory or in registry'${default}
     exit 0
     fi
     fi
@@ -209,14 +211,14 @@ ver=$(grep '"version"' package.json)
 vers=${ver#*:}
 ver=${vers%*,}
 else
-echo 'Package' $2 'not found locally or externally'
+echo -e ${red}'Package' $2 'not found locally or externally'${default}
 exit 0
 fi
 
 
 
 
-echo 'adding' $2 'version' $ver "to package.json"
+echo -e ${green}'adding' $2 'version' $ver "to package.json"${default}
 cd $cwd
 #extract package.json lines to array
 declare -a pkg
@@ -224,7 +226,6 @@ touch package.njson
 readarray -t pkg < package.json
 if [ $alreadydep = false ]; then
     if [ $havedependencies = true ]; then
-        echo 'Executing only one dependency'
         while (( ${#pkg[@]} > i )); do
             pkgline=${pkg[i++]}
             echo $pkgline >> package.njson
@@ -235,7 +236,6 @@ if [ $alreadydep = false ]; then
             fi
         done
     else
-        echo 'executing add dependency structure'
         size=${#pkg[@]}
         let size-=1
         count=1
@@ -258,7 +258,6 @@ fi
 if [ $3 = '-dev' ]; then
 depends='"devDependencies"'
 if [ $havedevdependencies = true ]; then
-    echo 'Executing only one devDependency'
     while (( ${#pkg[@]} > i )); do
         pkgline=${pkg[i++]}
         echo $pkgline >> package.njson
@@ -269,7 +268,6 @@ if [ $havedevdependencies = true ]; then
         fi
     done
 else
-    echo 'executing add devDependency structure'
     size=${#pkg[@]}
     let size-=1
     count=1

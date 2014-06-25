@@ -46,10 +46,15 @@ If both dependencies and devDependencies have a reference to the module it will 
 
 lnpm.sh configure
 Makes an existing node_modules directory compatible with lnpm by renaming the directories to include versions
-Need to add checking before changes are made, if you run this twice, you will end up with the version being added to the directory twice
 
 lnpm.sh update
 Need to implement for updating the local folder modules
+
+lnpm.sh revert
+Need to implement for reverting the local directory back to normal package directory names, thus making unusable to lnpm
+
+lnpm.sh deploy
+Need to implement for copying modules used by project to the project directory, changing directory names back to just the package name and modifing package.json to have the modified path. So the application can be deployed off the local system.
 
 Overall problems to overcome:
 There are different versions of node packages. One may be used in one project and a different version in another project. If the local node_modules folder is simply updated, it will replace the existing version of a module. This will be problematic since projects using older versions will no longer be able to access the version of the module on which it relies.

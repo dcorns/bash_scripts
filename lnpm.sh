@@ -21,8 +21,6 @@ ver=${vers%*,} #drop the comma
     echo $newdir
     mv $dirname "$newdir"
 done
-
-echo "Setup Directories"
 exit 0
 }
 

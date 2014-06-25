@@ -46,6 +46,7 @@ If both dependencies and devDependencies have a reference to the module it will 
 
 lnpm.sh configure
 Makes an existing node_modules directory compatible with lnpm by renaming the directories to include versions
+Need to add checking before changes are made, if you run this twice, you will end up with the version being added to the directory twice
 
 lnpm.sh update
 Need to implement for updating the local folder modules

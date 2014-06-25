@@ -44,6 +44,9 @@ lnpm.sh install <module_name> -dev
 Performs all the tasks of regular install but also will perform the same steps to add as a dev dependency
 If both dependencies and devDependencies have a reference to the module it will exit with package is already installed notification.
 
+lnpm.sh configure
+Makes an existing node_modules directory compatible with lnpm by renaming the directories to include versions
+
 lnpm.sh update
 Need to implement for updating the local folder modules
 

@@ -1,10 +1,38 @@
 #!/bin/sh
 clear
+#set the local node modules directory here
+nd='/data/Projects/node_modules/'
+
+#******************************************Major Functions**********************************************************
+#Configure existing directory that already contains normal node modules to work with lnpm
+setupDirs(){
+#Rename each directory with a 0-0-0 extention for version identification
+    #Proccess directories
+    cd $nd
+    for path in $nd*; do
+    [ -d "${path}" ] || continue # if not a directory, skip
+    dirname="$(basename "${path}")"
+    cd $dirname
+    ver=$(grep '"version"' package.json)
+vers=${ver#*:} #remove everything left of the colon
+ver=${vers%*,} #drop the comma
+    newdir=$dirname$ver
+    cd ..
+    echo $newdir
+    mv $dirname "$newdir"
+done
+
+echo "Setup Directories"
+exit 0
+}
+
+
 #validate input
 case $1 in
     'install') ;;
     'update') ;;
-    *) echo 'The first parameter must be install or update'
+    'configure') setupDirs ;;
+    *) echo 'The first parameter must be install, configure or update'
        exit 0
        ;;
 esac
@@ -16,9 +44,6 @@ case $3 in
        exit 0
        ;;
 esac
-
-#set the local node modules directory here
-nd='/data/Projects/node_modules/'
 
 #break down install and update
 if [ "$1" = 'update' ]; then
@@ -42,6 +67,7 @@ if [ "$1" = 'update' ]; then
         echo 'module included'
     fi
 else
+#*************************************lnpm install code******************************************************
 ndlength=${#nd}
 pkglength=${#2}
 #set current directory
@@ -236,4 +262,5 @@ fi
 #replace package.json with modified
 rm package.json
 mv package.njson package.json
+#************************************************END lnpm install code****************************************
 fi

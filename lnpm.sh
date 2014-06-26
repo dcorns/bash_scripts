@@ -67,7 +67,7 @@ cd $nd
 #revert the local folder or some other folder to standard package names
 revertDirs(){
 cd $nd
-echo -e ${yellow}'Reverting local node package directories, this will make them no longer function with nlpm'${default}
+echo -e ${yellow}'Reverting local node package directories, this will make them no longer function with lnpm'${default}
 for path in $nd*; do
     [ -d "${path}" ] || continue # if not a directory, skip
     dirname="$(basename "${path}")"
@@ -77,31 +77,11 @@ for path in $nd*; do
     #delete everything in directory name from space to end
 
 
-    revdir=${dirname%'/"'} #remove everything right of the project name
-    echo $revdir
-    #pknm=${pkgnm%*,}
-    #pknmlength=${#pknm}
-    #charvalid=true
-    #count=1
-    #pknam=''
-    #extract everything left of the @ to retrieve package name
-    #while (( count < $pknmlength )); do
-    #testval=${pknm:count:1}
-    #if [ $testval == "@" ]; then
-    #charvalid=false
-    #fi
-    #if [ $charvalid = true ]; then
-    #pknam=$pknam${pknm:count:1}
-    #fi
-    #let count+=1
-    #done
-    #pknam=${pknam:1:${#pknam}-1}
-    revdir=$(echo $dirname | grep -o '$pknam')
-    echo $revdir
-    #extract from version field to retrieve version number
-    #vers=${ver#*:} #remove everything left of the colon
-    #ver=${vers%*,} #drop the comma
-    #newdir=$pknam$ver
+    revdir=${dirname%%'"'*} #remove everything right of first "
+    #remove trailing space leaving only the package name
+    revdirlength=${#revdir}
+    revdir=${revdir:0:revdirlength-1}
+
     cd ..
     #if the directory does not have a version number with name add it here otherwise leave alone
     #if [ "$newdir" != "$dirname" ]; then

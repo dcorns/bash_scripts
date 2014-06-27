@@ -1,6 +1,7 @@
 #!/bin/sh
 #Created by Dale Corns codefellow@gmail.com 2014
 clear
+#*******************************************Variables*******************************************************************
 #set the local node modules directory here
 nd='/data/Projects/node_modules/'
 #define colors
@@ -8,7 +9,27 @@ red='\e[0;31m'
 green='\e[0;32m'
 yellow='\e[1;33m'
 default='\e[0m'
-#******************************************Major Functions**********************************************************
+havedependencies=false
+havedevdependencies=false
+cwd=$(pwd)
+#******************************************Functions********************************************************************
+#++++++++++++++++++++++++++++++++++++++++++++++++++++checkobject++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#Find out if package.json has dependencies and devdependencies section
+checkobject(){
+    #Check package for dependencies and devdependencies objects
+    checkdep=$(grep '"dependencies"' package.json)
+    checkdep=${checkdep:0:14}
+    if [ "$checkdep" = '"dependencies"' ]; then
+        havedependencies=true
+    fi
+    checkdep=$(grep '"devDependencies"' package.json)
+    checkdep=${checkdep:0:17}
+    if [ "$checkdep" = '"devdependencies"' ]; then
+        havedevdependencies=true
+    fi;
+}
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++setupDirs++++++++++++++++++++++++++++++++++++++++++++++
 #Configure existing directory that already contains normal node modules to work with lnpm
 setupDirs(){
 #Rename each directory with a 0-0-0 extention for version identification
@@ -55,78 +76,15 @@ done
 exit 0
 }
 
+#++++++++++++++++++++++++++++++++++++++++++++++++++update+++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #add latest packages from npm registry to local directory
-updatePackages(){
+update(){
 cd $nd
 #Create a temp directory and copy all modules over, striping them their version from directory name
 #Run npm install
 #Configure the temp directories and copy what does not already exist to the local folder, then remove temp directory and contents
-
-}
-
-#revert the local folder or some other folder to standard package names
-revertDirs(){
-cd $nd
-echo -e ${yellow}'Reverting local node package directories, this will make them no longer function with lnpm'${default}
-for path in $nd*; do
-    [ -d "${path}" ] || continue # if not a directory, skip
-    dirname="$(basename "${path}")"
-
-    cd "$dirname"
-    echo $dirname
-    #delete everything in directory name from space to end
-
-
-    revdir=${dirname%%'"'*} #remove everything right of first "
-    #remove trailing space leaving only the package name
-    revdirlength=${#revdir}
-    revdir=${revdir:0:revdirlength-1}
-
-    cd ..
-    #if the directory does not have a version number with name add it here otherwise leave alone
-    #if [ "$newdir" != "$dirname" ]; then
-        #mv $dirname "$newdir"
-        #echo -e ${green}'Converted' $dirname 'to' $newdir${default}
-    #else
-        #echo -e ${yellow}$dirname 'already prepared, nothing to do.'${default}
-    #fi
-done
-exit 0
-}
-
-#copy packages to project directory revert directory names and update package.json for deployment
-preDeploy(){
-echo 'preDeploy'
-}
-#validate input
-case $1 in
-    'install') ;;
-    'update') ;;
-    'configure')
-        setupDirs
-     ;;
-    'revert')
-        revertDirs
-    ;;
-    *)
-        echo -e ${red}'Invalid First Parameter'${default}
-        echo -e ${green}'Valid First Parameters are: install, configure, update, revert and deploy'${default}
-        exit 0
-    ;;
-esac
-
-case $3 in
-    '-dev') ;;
-    '') ;;
-    *) echo -e ${red}'The third parameter must be -dev or null'${default}
-       exit 0
-       ;;
-esac
-
-#break down install and update
-if [ "$1" = 'update' ]; then
-    if [ "$2" = '' ]; then
-        echo -e ${yellow}'update all chosen: This could take a while. To avoid this include a package to update as the second parameter'${default}
+if [ "$2" = '' ]; then
+echo -e ${yellow}'update all chosen: This could take a while. To avoid this include a package to update as the second parameter'${default}
         echo "Enter 'yes' to continue"
         read
         if [ "$REPLY" = 'yes' ]; then
@@ -144,33 +102,71 @@ if [ "$1" = 'update' ]; then
     else
         echo -e ${yellow}'module included'${default}
     fi
-else
-#*************************************lnpm install code******************************************************
+
+}
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++++++++revertDirs+++++++++++++++++++++++++++++++++++++++++++++++++++
+#revert the local folder or some other folder to standard package names
+revertDirs(){
+cd $nd
+echo -e ${yellow}'Reverting local node package directories will break all projects relying on lnpm'${default}
+echo -e ${yellow}'Make sure to remove the path from each package entry in package.json and run npm install'${default}
+echo -e ${yellow}'in the projects directory for each lnpm project you wish to make an npm'${default}
+echo -e ${yellow}'Since lnpm allows you to store multiple package versions by adding the version number to the'${default}
+echo -e ${yellow}'directory name (normally just package name), this proccess will put each older version in'${default}
+echo -e ${yellow}'a directory called <packagename>1...10 respectively. The latesest version will be in <packagename>'${default}
+echo -e ${yellow}'Enter yes to continue'${default}
+read
+if [ "$REPLY" != 'yes' ]; then
+    exit 0
+fi
+dircount=0
+for path in $nd*; do
+    [ -d "${path}" ] || continue # if not a directory, skip
+    dirname="$(basename "${path}")"
+
+    cd "$dirname"
+    #remove everything in directory name from space to end
+    revdir=${dirname%%'"'*} #remove everything right of first "
+    #remove trailing space leaving only the package name
+    revdirlength=${#revdir}
+    revdir=${revdir:0:revdirlength-1}
+    #store new directory names in array for duplicate proccessing
+    echo $revdir
+    adir[$dircount]=${$revdir}
+    cd ..
+    #if the directory does not have a version number with name add it here otherwise leave alone
+    #if [ "$newdir" != "$dirname" ]; then
+        #mv $dirname "$newdir"
+        #echo -e ${green}'Converted' $dirname 'to' $newdir${default}
+    #else
+        #echo -e ${yellow}$dirname 'already prepared, nothing to do.'${default}
+    #fi
+    let dircount=dircount+1
+    echo ${adir[$dircount]}
+done
+
+exit 0
+}
+
+#+++++++++++++++++++++++++++++++++++++++++++++++preDeploy+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#copy packages to project directory revert directory names and update package.json for deployment
+preDeploy(){
+echo 'preDeploy'
+}
+
+#++++++++++++++++++++++++++++++++++++++++++++++++++++install++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#*************************************lnpm install code*****************************************************************
+install(){
 ndlength=${#nd}
 pkglength=${#2}
 #set current directory
-cwd=$(pwd)
 havepackage=false
 packageinstalled=false
 devpackageinstalled=false
-havedependencies=false
-havedevdependencies=false
 isdevdependency=false
 alreadydep=false
 
-checkobject(){
-    #Check package for dependencies and devdependencies objects
-    checkdep=$(grep '"dependencies"' package.json)
-    checkdep=${checkdep:0:14}
-    if [ "$checkdep" = '"dependencies"' ]; then
-        havedependencies=true
-    fi
-    checkdep=$(grep '"devDependencies"' package.json)
-    checkdep=${checkdep:0:17}
-    if [ "$checkdep" = '"devdependencies"' ]; then
-        havedevdependencies=true
-    fi;
-}
 #check for package.json and npm init if it does not exist
 cd $cwd
 pkg=$(find package.json)
@@ -262,9 +258,6 @@ echo -e ${red}'Package' $2 'not found locally or externally'${default}
 exit 0
 fi
 
-
-
-
 echo -e ${green}'adding' $2 'version' $ver "to package.json"${default}
 cd $cwd
 #extract package.json lines to array
@@ -336,5 +329,51 @@ fi
 #replace package.json with modified
 rm package.json
 mv package.njson package.json
-#************************************************END lnpm install code****************************************
-fi
+}
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++++check3++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#validate the third parameter
+check3(){
+case $3 in
+    '-dev') ;;
+    '') ;;
+    *) echo -e ${red}'The third parameter must be -dev or null'${default}
+       exit 0
+       ;;
+esac
+}
+
+#/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
+#validate input
+case $1 in
+    'install')
+        check3
+        install
+        exit 0
+     ;;
+    'update')
+        update
+        exit 0
+    ;;
+    'configure')
+        setupDirs
+        exit 0
+     ;;
+    'revert')
+        revertDirs
+        exit 0
+    ;;
+    'deploy')
+        preDeploy
+        exit 0
+    ;;
+    *)
+        echo -e ${red}'Invalid First Parameter'${default}
+        echo -e ${green}'Valid First Parameters are: install, configure, update, revert and deploy'${default}
+        exit 0
+    ;;
+esac
+
+
+
+

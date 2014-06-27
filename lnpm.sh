@@ -132,23 +132,24 @@ for path in $nd*; do
     revdirlength=${#revdir}
     revdir=${revdir:0:revdirlength-1}
     #store new directory names in array for duplicate proccessing
-    #echo $revdir
+    echo $revdir
+    dups=0
+    for i in ${adir[@]};do
+    #echo ${i} , $revdir
+    if [ ${i} = $revdir ]; then
+        let dups=dups+1
+        echo $dups
+        revdir=$revdir$dups
+    fi
+    #echo ${i} , $dups
+    done
     adir[$dircount]=$revdir
     cd ..
     let dircount=dircount+1
 done
-adir[$dircount]=mongodb
+#adir[$dircount]=mongodb
 echo ${adir[*]}
-for i in ${adir[@]};do
-    echo ${i}
-    dupcount=0
-    for j in ${adir[@]};do
-        if [ ${i} = ${j} ]; then
-        let dupcount=dupcount+1
-            echo 'duplicate'${i}$dupcount
-        fi
-    done
-done
+
 exit 0
 }
 

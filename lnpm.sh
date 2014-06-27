@@ -132,20 +132,23 @@ for path in $nd*; do
     revdirlength=${#revdir}
     revdir=${revdir:0:revdirlength-1}
     #store new directory names in array for duplicate proccessing
-    echo $revdir
-    adir[$dircount]=${$revdir}
+    #echo $revdir
+    adir[$dircount]=$revdir
     cd ..
-    #if the directory does not have a version number with name add it here otherwise leave alone
-    #if [ "$newdir" != "$dirname" ]; then
-        #mv $dirname "$newdir"
-        #echo -e ${green}'Converted' $dirname 'to' $newdir${default}
-    #else
-        #echo -e ${yellow}$dirname 'already prepared, nothing to do.'${default}
-    #fi
     let dircount=dircount+1
-    echo ${adir[$dircount]}
 done
-
+adir[$dircount]=mongodb
+echo ${adir[*]}
+for i in ${adir[@]};do
+    echo ${i}
+    dupcount=0
+    for j in ${adir[@]};do
+        if [ ${i} = ${j} ]; then
+        let dupcount=dupcount+1
+            echo 'duplicate'${i}$dupcount
+        fi
+    done
+done
 exit 0
 }
 

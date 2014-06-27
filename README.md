@@ -51,10 +51,10 @@ lnpm.sh update
 Need to implement for updating the local folder modules
 
 lnpm.sh revert
-Need to implement for reverting the local directory back to normal package directory names, thus making unusable to lnpm
+Need to implement for reverting the local directory back to normal package directory names, thus making unusable to lnpm. Since npm uses only one directory which each version overwrites and lnpm saves multiple versions, in order to keep these versions one directory will be named only after the package, and each additional version of the package will maintain the version number in the name of the directory separated by a dash.
 
 lnpm.sh deploy
-Need to implement for copying modules used by project to the project directory, changing directory names back to just the package name and modifing package.json to have the modified path. So the application can be deployed off the local system.
+Need to implement for copying modules used by project to the project directory, changing directory names back to just the package name and modifying package.json to have the modified path. So the application can be deployed off the local system.
 
 Overall problems to overcome:
 There are different versions of node packages. One may be used in one project and a different version in another project. If the local node_modules folder is simply updated, it will replace the existing version of a module. This will be problematic since projects using older versions will no longer be able to access the version of the module on which it relies.

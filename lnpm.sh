@@ -113,42 +113,53 @@ echo -e ${yellow}'Reverting local node package directories will break all projec
 echo -e ${yellow}'Make sure to remove the path from each package entry in package.json and run npm install'${default}
 echo -e ${yellow}'in the projects directory for each lnpm project you wish to make an npm'${default}
 echo -e ${yellow}'Since lnpm allows you to store multiple package versions by adding the version number to the'${default}
-echo -e ${yellow}'directory name (normally just package name), this proccess will put each older version in'${default}
-echo -e ${yellow}'a directory called <packagename>1...10 respectively. The latesest version will be in <packagename>'${default}
+echo -e ${yellow}'directory name (normally just package name), this proccess will put each additional version in'${default}
+echo -e ${yellow}'a directory called <packagename>-<ver> respectively. One version will be in <packagename>'${default}
 echo -e ${yellow}'Enter yes to continue'${default}
 read
 if [ "$REPLY" != 'yes' ]; then
     exit 0
 fi
 dircount=0
+declare -a dups
+dupscount=0
 for path in $nd*; do
     [ -d "${path}" ] || continue # if not a directory, skip
     dirname="$(basename "${path}")"
-
     cd "$dirname"
     #remove everything in directory name from space to end
     revdir=${dirname%%'"'*} #remove everything right of first "
+    dirver=${dirname#*'"'}
+    dirver=${dirver%*'"'}
+    #echo $dirver
     #remove trailing space leaving only the package name
     revdirlength=${#revdir}
     revdir=${revdir:0:revdirlength-1}
     #store new directory names in array for duplicate proccessing
-    echo $revdir
-    dups=0
+    ##echo $revdir
+
     for i in ${adir[@]};do
     #echo ${i} , $revdir
     if [ ${i} = $revdir ]; then
+        revdir=$revdir'-'$dirver
+        dups[dupscount]=$revdir
         let dups=dups+1
-        echo $dups
-        revdir=$revdir$dups
     fi
-    #echo ${i} , $dups
     done
     adir[$dircount]=$revdir
     cd ..
+   #mv "$dirname" "$revdir"
     let dircount=dircount+1
 done
-#adir[$dircount]=mongodb
-echo ${adir[*]}
+for j in $adir[@];do
+    for k in ${dups[@]};do
+        if [ ${j} = ${k} ]; then
+            echo 'Duplicates no change'
+        else
+
+        fi
+    done
+done
 
 exit 0
 }

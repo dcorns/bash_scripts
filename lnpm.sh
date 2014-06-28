@@ -61,14 +61,15 @@ setupDirs(){
     done
     pknam=${pknam:1:${#pknam}-1}
     #extract from version field to retrieve version number
-    vers=${ver#*:} #remove everything left of the colon
-    ver=${vers%*,} #drop the comma
-    newdir=$pknam$ver
+    vers=${ver#*:} #remove most everything left of the colon
+    #get rid of extra space, comma and quotes
+    verslength=${#vers}
+    vers=${vers:2:verslength-4}
+    newdir=$pknam-$vers
     cd ..
     #if the directory does not have a version number with name add it here otherwise leave alone
     if [ "$newdir" != "$dirname" ]; then
         mv $dirname "$newdir"
-        echo -e ${green}'Converted' $dirname 'to' $newdir${default}
     else
         echo -e ${yellow}$dirname 'already prepared, nothing to do.'${default}
     fi
@@ -156,7 +157,7 @@ for j in $adir[@];do
         if [ ${j} = ${k} ]; then
             echo 'Duplicates no change'
         else
-
+            echo
         fi
     done
 done

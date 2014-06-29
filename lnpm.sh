@@ -114,8 +114,8 @@ echo -e ${yellow}'Reverting local node package directories will break all projec
 echo -e ${yellow}'Make sure to remove the path from each package entry in package.json and run npm install'${default}
 echo -e ${yellow}'in the projects directory for each lnpm project you wish to make an npm'${default}
 echo -e ${yellow}'Since lnpm allows you to store multiple package versions by adding the version number to the'${default}
-echo -e ${yellow}'directory name (normally just package name), this proccess will put each additional version in'${default}
-echo -e ${yellow}'a directory called <packagename>-<ver> respectively. One version will be in <packagename>'${default}
+echo -e ${yellow}'directory name (normally just package name), this proccess will not alter'${default}
+echo -e ${yellow}'directory names that are part multi packages you will need to rename the version desired manually'${default}
 echo -e ${yellow}'Enter yes to continue'${default}
 read
 if [ "$REPLY" != 'yes' ]; then

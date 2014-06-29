@@ -32,7 +32,9 @@ These scripts are intended to be useful on any distro and in most cases on both 
 
 extraGitinit.sh--This will initialize a local git, create an MIT License file and a blank README.md, create a matching repository on github and a remote to push and pull with. It also adds a testing branch to the local git. You must first alter lines 37 and 39 to by replacing <YourGitHubSite> with your git hub site and <YourGitHubUserName> with your git hub user name. After doing that I would suggest setting up a symbolic link to it as it will prove quite useful if you are doing a lot of projects.
 ##################### lnpm.sh Manage and distribute node package functionality in local file structure ##############################################
-lnpm--This, when completed will solve the problem of have node_modules installed in every directory in which you have a node project. It will allow node modules to be read from a centralized directory on the file system and when a particular package does not exist it will download the package to the centralized directory for continued use. No more downloading packages every time you start a new node project and no longer have node packages spread out all over your hard drive.
+lnpm--This, when completed will solve the problem of have node_modules installed in every directory in which you have a node project. It will allow node modules to be read from a centralized directory on the file system and when a particular package does not exist it will download the package to the centralized directory for continued use. No more downloading packages every time you start a new node project and no longer have node packages spread out all over your hard drive. It also allows for the centralized storage and use of multiple package versions.
+
+BEFORE USING lnpm.sh YOU MUST CHANGE LINE 6 OF THE SCRIPT TO THE FULL PATH OF THE DIRECTORY YOU WILL USE TO STORE THE NODE PACKAGES
 
 lnpm.sh install <module_name>
 Searches the local directory specified in $nd for the module and if it exist it will do the following as needed:
@@ -51,7 +53,7 @@ lnpm.sh update
 Need to implement for updating the local folder modules
 
 lnpm.sh revert
-Need to implement for reverting the local directory back to normal package directory names, thus making unusable to lnpm. Since npm uses only one directory which each version overwrites and lnpm saves multiple versions, in order to keep these versions one directory will be named only after the package, and each additional version of the package will maintain the version number in the name of the directory separated by a dash.
+Reverts the lmpm modules directory directories to standard node names. Since lnpm allows the centralized storage of multiple package versions by adding the version to the directory name, directories that are part of a multi-version package will remain unaltered. You will need to choose a version and the directory manually
 
 lnpm.sh deploy
 Need to implement for copying modules used by project to the project directory, changing directory names back to just the package name and modifying package.json to have the modified path. So the application can be deployed off the local system.

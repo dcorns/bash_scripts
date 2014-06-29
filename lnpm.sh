@@ -65,7 +65,7 @@ setupDirs(){
     #get rid of extra space, comma and quotes
     verslength=${#vers}
     vers=${vers:2:verslength-4}
-    newdir=$pknam-$vers
+    newdir=$pknam--$vers
     cd ..
     #if the directory does not have a version number with name add it here otherwise leave alone
     if [ "$newdir" != "$dirname" ]; then
@@ -122,45 +122,53 @@ if [ "$REPLY" != 'yes' ]; then
     exit 0
 fi
 dircount=0
-declare -a dups
 dupscount=0
 for path in $nd*; do
     [ -d "${path}" ] || continue # if not a directory, skip
     dirname="$(basename "${path}")"
     cd "$dirname"
-    #remove everything in directory name from space to end
-    revdir=${dirname%%'"'*} #remove everything right of first "
-    dirver=${dirname#*'"'}
-    dirver=${dirver%*'"'}
-    #echo $dirver
-    #remove trailing space leaving only the package name
-    revdirlength=${#revdir}
-    revdir=${revdir:0:revdirlength-1}
-    #store new directory names in array for duplicate proccessing
-    ##echo $revdir
+    #remove everything in directory name including double dash to end to get package name
+    basedir=${dirname%%'--'*}
+    #remove everything in directory name including double dash to front to get version
+    vers=${dirname##*'--'}
+    #check for multi-version packages and add version back to the directory name of duplicates
 
     for i in ${adir[@]};do
-    #echo ${i} , $revdir
-    if [ ${i} = $revdir ]; then
-        revdir=$revdir'-'$dirver
-        dups[dupscount]=$revdir
-        let dups=dups+1
+    if [ ${i} = $basedir ]; then
+        duprecorded=false
+        for ii in ${dups[@]};do
+            if [ ${ii} = ${i} ]; then
+                duprecorded=true
+            fi
+        done
+        if [ $duprecorded != true ]; then
+                #dupdir=$basedir
+                #basedir=$basedir'--'$vers
+                #echo $basedir
+                dups[dupscount]=$basedir
+                let dupscount=dupscount+1
+        fi
     fi
     done
-    adir[$dircount]=$revdir
+    adir[$dircount]=$basedir
     cd ..
    #mv "$dirname" "$revdir"
     let dircount=dircount+1
 done
-for j in $adir[@];do
-    for k in ${dups[@]};do
-        if [ ${j} = ${k} ]; then
-            echo 'Duplicates no change'
-        else
-            echo
-        fi
+
+for k in ${dups[@]};do
+            #echo ${k}
+        #if [ ${j} = ${k} ]; then
+            #echo 'Duplicates no change'
+        #else
+            echo -e ${green}${k}${default}
+        #fi
     done
-done
+
+#for j in ${adir[@]};do
+        #echo ${j}
+
+#done
 
 exit 0
 }

@@ -151,24 +151,24 @@ for path in $nd*; do
     fi
     done
     adir[$dircount]=$basedir
+    edir[$dircount]=$dirname
     cd ..
-   #mv "$dirname" "$revdir"
     let dircount=dircount+1
 done
 
-for k in ${dups[@]};do
-            #echo ${k}
-        #if [ ${j} = ${k} ]; then
-            #echo 'Duplicates no change'
-        #else
-            echo -e ${green}${k}${default}
-        #fi
+dircount=0
+for j in ${adir[@]};do
+    isdup=false
+     for k in ${dups[@]};do
+        if [ ${j} = ${k} ]; then
+            isdup=true
+        fi
     done
-
-#for j in ${adir[@]};do
-        #echo ${j}
-
-#done
+    if [ $isdup != true ]; then
+    mv ${edir[$dircount]} ${j}
+    fi
+    let dircount=dircount+1
+done
 
 exit 0
 }

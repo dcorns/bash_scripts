@@ -12,6 +12,11 @@ default='\e[0m'
 havedependencies=false
 havedevdependencies=false
 cwd=$(pwd)
+#Add parameters to function scopes
+pkginstall=$2
+devinstall=$3
+declare -a pkglist
+declare -a verlist
 #******************************************Functions********************************************************************
 #++++++++++++++++++++++++++++++++++++++++++++++++++++checkobject++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #Find out if package.json has dependencies and devdependencies section
@@ -184,7 +189,6 @@ echo 'preDeploy'
 install(){
 ndlength=${#nd}
 pkglength=${#2}
-#set current directory
 havepackage=false
 packageinstalled=false
 devpackageinstalled=false
@@ -252,19 +256,27 @@ if [ "$pkg" = 'package.json' ]; then
 else
 npm init
 fi
-checkobject
-
-#see if the package exists in the local directory
+if [ $pkginstall != '' ]; then
+checkobject #check and set havedevdependencies and havedependencies variables
+#see if the package ($pkginstall) exists in the local directory
+#get local package list
+splitdirnames
+exit 0
 cd $nd
-m=$(ls $2 -d)
+m=$(ls $pkginstall -d)
+echo $m
+echo $pkginstall
+exit 0
 if [ $m = $2 ]; then
   havepackage=true
   echo -e ${green}'package found in local directory' $nd${default}
 #not in local directory, download it if it exists
 else
-  npm install 2$
+    echo 'install module from npm'
+    exit 0
+  npm install $pkginstall
   m=$(ls $2 -d)
-  if [ $m = $2 ]; then
+  if [ $m = $pkginstall ]; then
     havepackage=true
   else
     echo -e ${red}'package does not exist in directory or in registry'${default}
@@ -353,12 +365,15 @@ fi
 #replace package.json with modified
 rm package.json
 mv package.njson package.json
+else
+echo 'no package argument provided'
+fi
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++check3++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #validate the third parameter
 check3(){
-case $3 in
+case $devinstall in
     '-dev') ;;
     '') ;;
     *) echo -e ${red}'The third parameter must be -dev or null'${default}
@@ -367,6 +382,33 @@ case $3 in
 esac
 }
 
+splitdirnames(){
+    for path in $nd*; do
+    [ -d "${path}" ] || continue # if not a directory, skip
+    basedirname="$(basename "${path}")"
+    cd "$basedirname"
+    #remove everything in directory name including double dash to end to get package name
+    basedir=${basedirname%%'--'*}
+    #remove everything in directory name including double dash to front to get version
+    vers=${basedirname##*'--'}
+    #add values to arrays
+    pkglist[$dircount]=$basedir
+    verlist[$dircount]=$vers
+    edir[$dircount]=$basedirname
+    let dircount=dircount+1
+    cd ..
+done
+echo ${pkglist[*]}
+echo ${verlist[*]}
+echo ${edir[*]}
+#count=0
+#while [ count < ${#pkglist} ]; do
+#echo ${pkglist[$count]}
+#echo ${#verlist[$count]},
+#echo ${verlist[$count]}
+#let count=count+1
+#done
+}
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input
 case $1 in

@@ -14,9 +14,13 @@ havedevdependencies=false
 cwd=$(pwd)
 #Add parameters to function scopes
 pkginstall=$2
+declare -a currentpaths
+declare -a curentversions
 devinstall=$3
+declare -a pkgpaths
 declare -a pkglist
 declare -a verlist
+
 #******************************************Functions********************************************************************
 #++++++++++++++++++++++++++++++++++++++++++++++++++++checkobject++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #Find out if package.json has dependencies and devdependencies section
@@ -257,34 +261,47 @@ else
 npm init
 fi
 if [ $pkginstall != '' ]; then
-checkobject #check and set havedevdependencies and havedependencies variables
+    checkobject #check and set havedevdependencies and havedependencies variables
 #see if the package ($pkginstall) exists in the local directory
-#get local package list
-splitdirnames
-cd $nd
-for p in ${pkglist[@]}; do
-  echo ${p}
-done
-exit 0
-m=$(ls $pkginstall -d)
-echo $m
-echo $pkginstall
-exit 0
-if [ $m = $2 ]; then
-  havepackage=true
-  echo -e ${green}'package found in local directory' $nd${default}
-#not in local directory, download it if it exists
-else
-    echo 'install module from npm'
-    exit 0
-  npm install $pkginstall
-  m=$(ls $2 -d)
-  if [ $m = $pkginstall ]; then
-    havepackage=true
-  else
-    echo -e ${red}'package does not exist in directory or in registry'${default}
-    exit 0
-    fi
+    #get local package list set currentpaths and currentversions if at least one package is in the list
+    splitdirnames
+    pkgexists=0
+    pkgidx=0
+    for p in ${pkglist[@]}; do
+        if [ ${p} = $pkginstall ]; then
+            currentpaths[$pkgexists]=${pkgpaths[$pkgidx]}
+            currentversions[$pkgexists]=${verlist[$pkgidx]}
+            let pkgexists=${pkgexists}+1
+        fi
+        let pkgidx=${pkgidx}+1
+    done
+    if [ $pkgexists > 0 ]; then
+        echo -e ${green}$pkgexists 'package/s found in local directory' $nd${default}
+        echo ${currentpaths[@]}
+        echo ${currentversions[@]}
+        #If more than own version then manage
+        if [ $pkgexists > 1 ]; then
+            echo 'Select Vesion'
+            select s in 'One Two Three'; do
+            echo $s
+            break
+            done
+        fi
+        exit 0
+#not in local directory, download it if it exists in npm registry
+        else
+        echo -e ${yellow}$pkginstall 'not found in local directory'
+        echo -e ${green}'Installing module from npm external repository'${default}
+        exit 0
+        cd $nd
+        npm install $pkginstall
+        m=$(find $pkginstall)
+        if [ $m = $pkginstall ]; then
+            echo -e ${green}$pkginstall 'added to local npm storage'${default}
+        else
+            echo -e ${red}$pkginstall 'does not exist in local directory or in npm repository'${default}
+        exit 0
+        fi
     fi
 #if the package exists, get the version
 if [ $havepackage = true ]; then
@@ -396,9 +413,11 @@ splitdirnames(){
     #add values to arrays
     pkglist[$dircount]=$basedir
     verlist[$dircount]=$vers
+    pkgpaths[$dircount]=$nd$basedirname
     let dircount=dircount+1
 done
 }
+
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input
 case $1 in

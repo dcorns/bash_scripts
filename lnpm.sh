@@ -261,8 +261,11 @@ checkobject #check and set havedevdependencies and havedependencies variables
 #see if the package ($pkginstall) exists in the local directory
 #get local package list
 splitdirnames
-exit 0
 cd $nd
+for p in ${pkglist[@]}; do
+  echo ${p}
+done
+exit 0
 m=$(ls $pkginstall -d)
 echo $m
 echo $pkginstall
@@ -386,7 +389,6 @@ splitdirnames(){
     for path in $nd*; do
     [ -d "${path}" ] || continue # if not a directory, skip
     basedirname="$(basename "${path}")"
-    cd "$basedirname"
     #remove everything in directory name including double dash to end to get package name
     basedir=${basedirname%%'--'*}
     #remove everything in directory name including double dash to front to get version
@@ -394,20 +396,8 @@ splitdirnames(){
     #add values to arrays
     pkglist[$dircount]=$basedir
     verlist[$dircount]=$vers
-    edir[$dircount]=$basedirname
     let dircount=dircount+1
-    cd ..
 done
-echo ${pkglist[*]}
-echo ${verlist[*]}
-echo ${edir[*]}
-#count=0
-#while [ count < ${#pkglist} ]; do
-#echo ${pkglist[$count]}
-#echo ${#verlist[$count]},
-#echo ${verlist[$count]}
-#let count=count+1
-#done
 }
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input

@@ -20,7 +20,7 @@ devinstall=$3
 declare -a pkgpaths
 declare -a pkglist
 declare -a verlist
-
+pkgpath=''
 #******************************************Functions********************************************************************
 #++++++++++++++++++++++++++++++++++++++++++++++++++++checkobject++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #Find out if package.json has dependencies and devdependencies section
@@ -191,128 +191,11 @@ echo 'preDeploy'
 #++++++++++++++++++++++++++++++++++++++++++++++++++++install++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #*************************************lnpm install code*****************************************************************
 install(){
-ndlength=${#nd}
-pkglength=${#2}
-havepackage=false
-packageinstalled=false
-devpackageinstalled=false
-isdevdependency=false
-alreadydep=false
+#verify or create package.json file
+checkpackagejson
+setlocalpkgpath
 
-#check for package.json and npm init if it does not exist
-cd $cwd
-pkg=$(find package.json)
-if [ "$pkg" = 'package.json' ]; then
-    echo -e ${green}"found package.json"${default}
-    #see if package is already installed
-    installpackage=$(grep $nd$2 package.json)
-    installpackage=${installpackage:0:ndlength+=pkglength}
-    if [ "$installpackage" = "$nd$2" ]; then
-        alreadydep=true
-        if [ "$3" = '-dev' ]; then
-            #check for devDependencies in package.json
-            devDependencies=$(grep '"devDependencies"' -o package.json)
-                #check return code of grep, if 0 devDependencies does exist
-            if [ $? = 0 ]; then
-                #check devDependencies for module $nd$2
-                    #extract devDependencies from package.json and store in devtmp
-                declare -a devpkg
-                devstart=false
-                readarray -t devpkg < package.json
-                touch devtmp
-                while (( ${#devpkg[@]} > i )); do
-                    pkgline=${devpkg[i++]}
-                        #check each package.json line for devDependencies text
-                    devdep=$(echo $pkgline | grep -o 'devDependencies')
-                            #when devDependencies is found start copying lines to devtmp
-                    if [ "$devdep" = 'devDependencies' ]; then
-                        devstart=true
-                    fi
-                    if [ $devstart = true ]; then
-                        echo $pkgline >> devtmp
-                        pkglinetest=$(echo grep $pkgline | grep -o '}')
-                        #when closing bracket is found, stop copying lines
-                        if [ "$pkglinetest" = '}' ]; then
-                            devstart=false
-                        fi
-                    fi
-                done
-                    #check resulting file(which should contain all devDependencies modules) for $nd$2
-                devtest=$(grep -o $nd$2 devtmp)
-                if [ $? = 0 ]; then
-                    echo -e ${yellow}$2 'already installed'${default}
-                    rm devtmp
-                    exit 0
-                fi
-
-            fi
-            exit 0
-            if [ "$devDependencies" = "$nd$2" ]; then
-                echo -e ${yellow}$2 'already installed'${default}
-                exit 0
-            fi
-        else
-            echo -e ${yellow}$2 'already installed'${default}
-            exit 0
-        fi
-        #check installed version against stored version offer change if not matched
-    fi
-else
-npm init
-fi
-if [ $pkginstall != '' ]; then
-    checkobject #check and set havedevdependencies and havedependencies variables
-#see if the package ($pkginstall) exists in the local directory
-    #get local package list set currentpaths and currentversions if at least one package is in the list
-    splitdirnames
-    pkgexists=0
-    pkgidx=0
-    for p in ${pkglist[@]}; do
-        if [ ${p} = $pkginstall ]; then
-            currentpaths[$pkgexists]=${pkgpaths[$pkgidx]}
-            currentversions[$pkgexists]=${verlist[$pkgidx]}
-            let pkgexists=${pkgexists}+1
-        fi
-        let pkgidx=${pkgidx}+1
-    done
-    if [ $pkgexists > 0 ]; then
-        echo -e ${green}$pkgexists 'package/s found in local directory' $nd${default}
-        echo ${currentpaths[@]}
-        echo ${currentversions[@]}
-        #If more than own version then manage
-        if [ $pkgexists > 1 ]; then
-            echo 'Select Vesion'
-            select s in 'One Two Three'; do
-            echo $s
-            break
-            done
-        fi
-        exit 0
-#not in local directory, download it if it exists in npm registry
-        else
-        echo -e ${yellow}$pkginstall 'not found in local directory'
-        echo -e ${green}'Installing module from npm external repository'${default}
-        exit 0
-        cd $nd
-        npm install $pkginstall
-        m=$(find $pkginstall)
-        if [ $m = $pkginstall ]; then
-            echo -e ${green}$pkginstall 'added to local npm storage'${default}
-        else
-            echo -e ${red}$pkginstall 'does not exist in local directory or in npm repository'${default}
-        exit 0
-        fi
-    fi
-#if the package exists, get the version
-if [ $havepackage = true ]; then
-cd $2
-ver=$(grep '"version"' package.json)
-vers=${ver#*:}
-ver=${vers%*,}
-else
-echo -e ${red}'Package' $2 'not found locally or externally'${default}
 exit 0
-fi
 
 echo -e ${green}'adding' $2 'version' $ver "to package.json"${default}
 cd $cwd
@@ -385,9 +268,9 @@ fi
 #replace package.json with modified
 rm package.json
 mv package.njson package.json
-else
-echo 'no package argument provided'
-fi
+#else
+#echo 'no package argument provided'
+#fi
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++check3++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -418,6 +301,137 @@ splitdirnames(){
 done
 }
 
+setlocalpkgpath()
+{
+if [ $pkginstall != '' ]; then
+    checkobject #check and set havedevdependencies and havedependencies variables
+#see if the package ($pkginstall) exists in the local directory
+    #get local package list set currentpaths and currentversions if at least one package is in the list
+    splitdirnames
+    pkgexists=0
+    pkgidx=0
+    for p in ${pkglist[@]}; do
+        if [ ${p} = $pkginstall ]; then
+            currentpaths[$pkgexists]=${pkgpaths[$pkgidx]}
+            currentversions[$pkgexists]=${verlist[$pkgidx]}
+            let pkgexists=${pkgexists}+1
+        fi
+        let pkgidx=${pkgidx}+1
+    done
+    if [ ${pkgexists} -gt 0 ]; then
+        #set package path
+        pkgpath=${currentpaths[0]}
+        echo -e ${green}$pkgexists 'package/s found in local directory' $nd${default}
+        #If more than one version then manage (pkgexists advances one more before exiting loop)
+
+        if [ $pkgexists -gt 1 ]; then
+            echo 'Select Vesion'
+            options=${currentversions[@]}
+            select s in $options; do
+            count=0
+            for cv in ${currentversions[@]}; do
+                if [ $cv = $s ]; then
+                    pkgpath=${currentpaths[count]}
+                fi
+                let count=${count}+1
+            done
+            break
+            done
+        fi
+        echo $pkgpath
+#not in local directory, download it if it exists in npm registry
+    else
+        echo -e ${yellow}$pkginstall 'not found in local directory'
+        echo -e ${green}'Installing module from npm external repository'${default}
+        cd $nd
+        npm install $pkginstall
+        m=$(find $pkginstall)
+        if [ $m = ${pkginstall} ]; then
+            echo -e ${green}$pkginstall 'added to local npm storage'${default}
+        else
+            echo -e ${red}$pkginstall 'does not exist in local directory or in npm repository'${default}
+        exit 0
+        fi
+    fi
+else
+echo -e ${red}'Package' $pkginstall 'not found locally or externally'${default}
+exit 0
+fi
+}
+
+#check for package.json and if exist check configuration, otherwise create it
+checkpackagejson()
+{
+ndlength=${#nd}
+pkglength=${#2}
+havepackage=false
+packageinstalled=false
+devpackageinstalled=false
+isdevdependency=false
+alreadydep=false
+
+#check for package.json and npm init if it does not exist
+cd $cwd
+pkg=$(find package.json)
+if [ "$pkg" = 'package.json' ]; then
+    echo -e ${green}"found package.json"${default}
+    #see if package is already installed
+    installpackage=$(grep $nd$2 package.json)
+    installpackage=${installpackage:0:ndlength+=pkglength}
+    if [ "$installpackage" = "$nd$2" ]; then
+        alreadydep=true
+        if [ "$3" = '-dev' ]; then
+            #check for devDependencies in package.json
+            devDependencies=$(grep '"devDependencies"' -o package.json)
+                #check return code of grep, if 0 devDependencies does exist
+            if [ $? = 0 ]; then
+                #check devDependencies for module $nd$2
+                    #extract devDependencies from package.json and store in devtmp
+                declare -a devpkg
+                devstart=false
+                readarray -t devpkg < package.json
+                touch devtmp
+                while (( ${#devpkg[@]} > i )); do
+                    pkgline=${devpkg[i++]}
+                        #check each package.json line for devDependencies text
+                    devdep=$(echo $pkgline | grep -o 'devDependencies')
+                            #when devDependencies is found start copying lines to devtmp
+                    if [ "$devdep" = 'devDependencies' ]; then
+                        devstart=true
+                    fi
+                    if [ $devstart = true ]; then
+                        echo $pkgline >> devtmp
+                        pkglinetest=$(echo grep $pkgline | grep -o '}')
+                        #when closing bracket is found, stop copying lines
+                        if [ "$pkglinetest" = '}' ]; then
+                            devstart=false
+                        fi
+                    fi
+                done
+                    #check resulting file(which should contain all devDependencies modules) for $nd$2
+                devtest=$(grep -o $nd$2 devtmp)
+                if [ $? = 0 ]; then
+                    echo -e ${yellow}$2 'already installed'${default}
+                    rm devtmp
+                    exit 0
+                fi
+
+            fi
+            exit 0
+            if [ "$devDependencies" = "$nd$2" ]; then
+                echo -e ${yellow}$2 'already installed'${default}
+                exit 0
+            fi
+        else
+            echo -e ${yellow}$2 'already installed'${default}
+            exit 0
+        fi
+        #check installed version against stored version offer change if not matched
+    fi
+else
+npm init
+fi
+}
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input
 case $1 in

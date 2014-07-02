@@ -21,6 +21,7 @@ declare -a pkgpaths
 declare -a pkglist
 declare -a verlist
 pkgpath=''
+pkgver=''
 #******************************************Functions********************************************************************
 #++++++++++++++++++++++++++++++++++++++++++++++++++++checkobject++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #Find out if package.json has dependencies and devdependencies section
@@ -193,11 +194,9 @@ echo 'preDeploy'
 install(){
 #verify or create package.json file
 checkpackagejson
-setlocalpkgpath
+setpackage
 
-exit 0
-
-echo -e ${green}'adding' $2 'version' $ver "to package.json"${default}
+echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json"${default}
 cd $cwd
 #extract package.json lines to array
 declare -a pkg
@@ -211,7 +210,7 @@ if [ $alreadydep = false ]; then
             dep=$(echo $pkgline | grep -o 'dependencies')
             #if the result is invalid the if statement will generate error however program still executes as expected
             if [ "$dep" = 'dependencies' ]; then
-                echo $nd$2":" $ver"," >> package.njson
+                echo $pkgpath":" $pkgver"," >> package.njson
             fi
         done
     else
@@ -226,7 +225,7 @@ if [ $alreadydep = false ]; then
             if [ $size = $count ]; then
                 depends='"dependencies"'
                 echo $depends': {' >> package.njson
-                echo $nd$2 ":" $ver >> package.njson
+                echo $pkgpath ":" $pkgver >> package.njson
                 echo "}" >> package.njson
             fi
             let count+=1
@@ -243,7 +242,7 @@ if [ $havedevdependencies = true ]; then
         dep=$(echo $pkgline | grep -o 'devDependencies')
         #if the result is invalid the if statement will generate error however program still executes as expected
         if [ "$dep" = 'devDependencies' ]; then
-            echo $nd$2":" $ver"," >> package.njson
+            echo $pkgpath":" $pkgver"," >> package.njson
         fi
     done
 else
@@ -258,7 +257,7 @@ else
         if [ $size = $count ]; then
             depends='"devDependencies"'
             echo $depends': {' >> package.njson
-            echo $nd$2 ":" $ver >> package.njson
+            echo $pkgpath ":" $pkgver >> package.njson
             echo "}" >> package.njson
         fi
         let count+=1
@@ -301,7 +300,7 @@ splitdirnames(){
 done
 }
 
-setlocalpkgpath()
+setpackage()
 {
 if [ $pkginstall != '' ]; then
     checkobject #check and set havedevdependencies and havedependencies variables
@@ -321,6 +320,7 @@ if [ $pkginstall != '' ]; then
     if [ ${pkgexists} -gt 0 ]; then
         #set package path
         pkgpath=${currentpaths[0]}
+        pkgver=${currentversions[0]}
         echo -e ${green}$pkgexists 'package/s found in local directory' $nd${default}
         #If more than one version then manage (pkgexists advances one more before exiting loop)
 
@@ -332,13 +332,14 @@ if [ $pkginstall != '' ]; then
             for cv in ${currentversions[@]}; do
                 if [ $cv = $s ]; then
                     pkgpath=${currentpaths[count]}
+                    pkgver=${currentversions[count]}
                 fi
                 let count=${count}+1
             done
             break
             done
         fi
-        echo $pkgpath
+        echo $pkgpath , $pkgver
 #not in local directory, download it if it exists in npm registry
     else
         echo -e ${yellow}$pkginstall 'not found in local directory'

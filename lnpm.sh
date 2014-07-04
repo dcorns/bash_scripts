@@ -205,7 +205,7 @@ if [ $alreadydep = false ]; then
     addpackageDep
 fi
 #if parameter 3 -dev add as a devdependency
-if [ '$devinstall' = '-dev' ]; then
+if [ "$devinstall" = "-dev" ]; then
 addpackageDev
 fi
 echo -e ${green}'Installation complete'${default}
@@ -302,7 +302,6 @@ fi
 #check for package.json and if exist check configuration, otherwise create it and read into pkgjson array
 checkpackagejson()
 {
-echo $pkgpath , $pkgver , $pkginstall
 #check for package.json and npm init if it does not exist
 cd $cwd
 pkg=$(find package.json)
@@ -363,6 +362,9 @@ echo -e ${green}$pkginstall $pkgver 'added to package.json dependencies'${defaul
 }
 
 addpackageDev(){
+cd $cwd
+#make temp package.json file
+touch package.njson
 depends='"devDependencies"'
 if [ $havedevdependencies = true ]; then
     while (( ${#pkgjson[@]} > i )); do

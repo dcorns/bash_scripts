@@ -19,6 +19,12 @@
 "dependencies": {
 /data/Projects/node_modules/grunt--0.4.3: 0.4.3,
 /data/Projects/node_modules/chai--1.9.0: 1.9.0,
-/data/Projects/node_modules/express--3.5.0 : 3.5.0
+/data/Projects/node_modules/express--4.0.5 : 4.0.5
+}
+"devDependencies": {
+/data/Projects/node_modules/grunt--0.4.3 : 0.4.3
+}
+"devDependencies": {
+/data/Projects/node_modules/grunt--0.4.3 : 0.4.3
 }
 }

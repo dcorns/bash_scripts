@@ -11,6 +11,9 @@ yellow='\e[1;33m'
 default='\e[0m'
 havedependencies=false
 havedevdependencies=false
+localpackageadded=false
+alreadydep=false
+declare -a pkgjson
 cwd=$(pwd)
 #Add parameters to function scopes
 pkginstall=$2
@@ -192,84 +195,20 @@ echo 'preDeploy'
 #++++++++++++++++++++++++++++++++++++++++++++++++++++install++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #*************************************lnpm install code*****************************************************************
 install(){
-#verify or create package.json file
-checkpackagejson
+#Check for package locally, else install from repo, else error invalid package
 setpackage
-
-echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json"${default}
-cd $cwd
-#extract package.json lines to array
-declare -a pkg
-touch package.njson
-readarray -t pkg < package.json
+#verify or create package.json file if exists check for existance of package in file
+checkpackagejson
+#if not already in package.json dependencies object, add it
 if [ $alreadydep = false ]; then
-    if [ $havedependencies = true ]; then
-        while (( ${#pkg[@]} > i )); do
-            pkgline=${pkg[i++]}
-            echo $pkgline >> package.njson
-            dep=$(echo $pkgline | grep -o 'dependencies')
-            #if the result is invalid the if statement will generate error however program still executes as expected
-            if [ "$dep" = 'dependencies' ]; then
-                echo $pkgpath":" $pkgver"," >> package.njson
-            fi
-        done
-    else
-        size=${#pkg[@]}
-        let size-=1
-        count=1
-        while (( ${#pkg[@]} > i )); do
-            pkgline=${pkg[i++]}
-            echo $pkgline >> package.njson
-            dep=$(echo $pkgline | grep -o 'dependencies')
-            #if the result is invalid the if statement will generate error however program still executes as expected
-            if [ $size = $count ]; then
-                depends='"dependencies"'
-                echo $depends': {' >> package.njson
-                echo $pkgpath ":" $pkgver >> package.njson
-                echo "}" >> package.njson
-            fi
-            let count+=1
-        done
-    fi
+    echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json"${default}
+    addpackageDep
 fi
-#check for parameter 3 -dev add as a dependency also
-if [ $3 = '-dev' ]; then
-depends='"devDependencies"'
-if [ $havedevdependencies = true ]; then
-    while (( ${#pkg[@]} > i )); do
-        pkgline=${pkg[i++]}
-        echo $pkgline >> package.njson
-        dep=$(echo $pkgline | grep -o 'devDependencies')
-        #if the result is invalid the if statement will generate error however program still executes as expected
-        if [ "$dep" = 'devDependencies' ]; then
-            echo $pkgpath":" $pkgver"," >> package.njson
-        fi
-    done
-else
-    size=${#pkg[@]}
-    let size-=1
-    count=1
-    while (( ${#pkg[@]} > i )); do
-        pkgline=${pkg[i++]}
-        echo $pkgline >> package.njson
-        dep=$(echo $pkgline | grep -o 'devDependencies')
-        #if the result is invalid the if statement will generate error however program still executes as expected
-        if [ $size = $count ]; then
-            depends='"devDependencies"'
-            echo $depends': {' >> package.njson
-            echo $pkgpath ":" $pkgver >> package.njson
-            echo "}" >> package.njson
-        fi
-        let count+=1
-    done
+#if parameter 3 -dev add as a devdependency
+if [ '$devinstall' = '-dev' ]; then
+addpackageDev
 fi
-fi
-#replace package.json with modified
-rm package.json
-mv package.njson package.json
-#else
-#echo 'no package argument provided'
-#fi
+echo -e ${green}'Installation complete'${default}
 }
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++++check3++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -339,7 +278,6 @@ if [ $pkginstall != '' ]; then
             break
             done
         fi
-        echo $pkgpath , $pkgver
 #not in local directory, download it if it exists in npm registry
     else
         echo -e ${yellow}$pkginstall 'not found in local directory'
@@ -347,8 +285,9 @@ if [ $pkginstall != '' ]; then
         cd $nd
         npm install $pkginstall
         m=$(find $pkginstall)
-        if [ $m = ${pkginstall} ]; then
+        if [ '$m' = ${pkginstall} ]; then
             echo -e ${green}$pkginstall 'added to local npm storage'${default}
+            localpackageadded=true
         else
             echo -e ${red}$pkginstall 'does not exist in local directory or in npm repository'${default}
         exit 0
@@ -360,78 +299,106 @@ exit 0
 fi
 }
 
-#check for package.json and if exist check configuration, otherwise create it
+#check for package.json and if exist check configuration, otherwise create it and read into pkgjson array
 checkpackagejson()
 {
-ndlength=${#nd}
-pkglength=${#2}
-havepackage=false
-packageinstalled=false
-devpackageinstalled=false
-isdevdependency=false
-alreadydep=false
-
+echo $pkgpath , $pkgver , $pkginstall
 #check for package.json and npm init if it does not exist
 cd $cwd
 pkg=$(find package.json)
 if [ "$pkg" = 'package.json' ]; then
-    echo -e ${green}"found package.json"${default}
-    #see if package is already installed
-    installpackage=$(grep $nd$2 package.json)
-    installpackage=${installpackage:0:ndlength+=pkglength}
-    if [ "$installpackage" = "$nd$2" ]; then
-        alreadydep=true
-        if [ "$3" = '-dev' ]; then
-            #check for devDependencies in package.json
-            devDependencies=$(grep '"devDependencies"' -o package.json)
-                #check return code of grep, if 0 devDependencies does exist
-            if [ $? = 0 ]; then
-                #check devDependencies for module $nd$2
-                    #extract devDependencies from package.json and store in devtmp
-                declare -a devpkg
-                devstart=false
-                readarray -t devpkg < package.json
-                touch devtmp
-                while (( ${#devpkg[@]} > i )); do
-                    pkgline=${devpkg[i++]}
-                        #check each package.json line for devDependencies text
-                    devdep=$(echo $pkgline | grep -o 'devDependencies')
-                            #when devDependencies is found start copying lines to devtmp
-                    if [ "$devdep" = 'devDependencies' ]; then
-                        devstart=true
-                    fi
-                    if [ $devstart = true ]; then
-                        echo $pkgline >> devtmp
-                        pkglinetest=$(echo grep $pkgline | grep -o '}')
-                        #when closing bracket is found, stop copying lines
-                        if [ "$pkglinetest" = '}' ]; then
-                            devstart=false
-                        fi
-                    fi
-                done
-                    #check resulting file(which should contain all devDependencies modules) for $nd$2
-                devtest=$(grep -o $nd$2 devtmp)
-                if [ $? = 0 ]; then
-                    echo -e ${yellow}$2 'already installed'${default}
-                    rm devtmp
-                    exit 0
-                fi
-
-            fi
-            exit 0
-            if [ "$devDependencies" = "$nd$2" ]; then
-                echo -e ${yellow}$2 'already installed'${default}
-                exit 0
-            fi
-        else
-            echo -e ${yellow}$2 'already installed'${default}
-            exit 0
+    echo -e ${green}"Found package.json"${default}
+    if [ localpackageadded = true ]; then
+        echo "New package added, bypass package.json check"
+    else
+        installpackage=$(grep $pkginstall package.json)
+        if [ ${#installpackage} -gt 0 ]; then
+        #check for multi versions and if exists then display choices noting that a version already exists in package.json
+        #but for now simply note a version is installed and skip adding it
+            alreadydep=true
+            echo -e ${yellow}$installpackage is already in package.json dependencies object${default}
         fi
-        #check installed version against stored version offer change if not matched
     fi
 else
 npm init
 fi
+#extract package.json lines to array
+readarray -t pkgjson < package.json
+}
+
+addpackageDep(){
+cd $cwd
+#make temp package.json file
+touch package.njson
+#if dependencies object already exists in package.json just add the package to it
+if [ $havedependencies = true ]; then
+    while (( ${#pkgjson[@]} > i )); do
+        pkgline=${pkgjson[i++]}
+        echo $pkgline >> package.njson
+        dep=$(echo $pkgline | grep -o 'dependencies')
+        if [ "$dep" = 'dependencies' ]; then
+            echo $pkgpath":" $pkgver"," >> package.njson
+        fi
+    done
+else
+#create dependencies object and add the package to it
+    size=${#pkgjson[@]}
+    let size-=1
+    count=1
+    while (( ${#pkgjson[@]} > i )); do
+        pkgline=${pkgjson[i++]}
+        echo $pkgline >> package.njson
+        dep=$(echo $pkgline | grep -o 'dependencies')
+            if [ $size = $count ]; then
+                depends='"dependencies"'
+                echo $depends': {' >> package.njson
+                echo $pkgpath ":" $pkgver >> package.njson
+                echo "}" >> package.njson
+            fi
+        let count+=1
+    done
+fi
+writepackagejson
+echo -e ${green}$pkginstall $pkgver 'added to package.json dependencies'${default}
+}
+
+addpackageDev(){
+depends='"devDependencies"'
+if [ $havedevdependencies = true ]; then
+    while (( ${#pkgjson[@]} > i )); do
+        pkgline=${pkgjson[i++]}
+        echo $pkgline >> package.njson
+        dep=$(echo $pkgline | grep -o 'devDependencies')
+        #if the result is invalid the if statement will generate error however program still executes as expected
+        if [ "$dep" = 'devDependencies' ]; then
+            echo $pkgpath":" $pkgver"," >> package.njson
+        fi
+    done
+else
+    size=${#pkgjson[@]}
+    let size-=1
+    count=1
+    while (( ${#pkgjson[@]} > i )); do
+        pkgline=${pkgjson[i++]}
+        echo $pkgline >> package.njson
+        dep=$(echo $pkgline | grep -o 'devDependencies')
+        #if the result is invalid the if statement will generate error however program still executes as expected
+        if [ $size = $count ]; then
+            depends='"devDependencies"'
+            echo $depends': {' >> package.njson
+            echo $pkgpath ":" $pkgver >> package.njson
+            echo "}" >> package.njson
+        fi
+        let count+=1
+    done
+fi
+#replace package.json with modified
+writepackagejson
+echo -e ${green}$pkginstall $pkgver 'added to package.json devdependencies'${default}
+}
+writepackagejson(){
+rm package.json
+mv package.njson package.json
 }
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input

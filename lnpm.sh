@@ -13,6 +13,7 @@ havedependencies=false
 havedevdependencies=false
 localpackageadded=false
 alreadydep=false
+alreadydev=false
 declare -a pkgjson
 cwd=$(pwd)
 #Add parameters to function scopes
@@ -200,13 +201,18 @@ setpackage
 #verify or create package.json file if exists check for existance of package in file
 checkpackagejson
 #if not already in package.json dependencies object, add it
+checkpackageDep
 if [ $alreadydep = false ]; then
-    echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json"${default}
+    echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json dependencies"${default}
     addpackageDep
 fi
 #if parameter 3 -dev add as a devdependency
 if [ "$devinstall" = "-dev" ]; then
-addpackageDev
+    checkpackageDev
+    if [ $alreadydev = false ]; then
+        echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json devdependencies"${default}
+        addpackageDev
+    fi
 fi
 echo -e ${green}'Installation complete'${default}
 }
@@ -299,7 +305,7 @@ exit 0
 fi
 }
 
-#check for package.json and if exist check configuration, otherwise create it and read into pkgjson array
+#check for package.json and if exist, otherwise create it, and read into pkgjson array
 checkpackagejson()
 {
 #check for package.json and npm init if it does not exist
@@ -307,10 +313,20 @@ cd $cwd
 pkg=$(find package.json)
 if [ "$pkg" = 'package.json' ]; then
     echo -e ${green}"Found package.json"${default}
-    if [ localpackageadded = true ]; then
-        echo "New package added, bypass package.json check"
+else
+npm init
+fi
+#extract package.json lines to array
+readarray -t pkgjson < package.json
+parcepkgjson
+exit 0
+}
+#Check for package in dependencies
+checkpackageDep(){
+if [ localpackageadded = true ]; then
+        echo "New package added, bypass package.json dependencies check"
     else
-        installpackage=$(grep $pkginstall package.json)
+        installpackage=$(grep $pkginstall package.json) #simple grep all that is required cause in package.json it will always be in as a dependencies if not also as a devdependencies
         if [ ${#installpackage} -gt 0 ]; then
         #check for multi versions and if exists then display choices noting that a version already exists in package.json
         #but for now simply note a version is installed and skip adding it
@@ -318,13 +334,22 @@ if [ "$pkg" = 'package.json' ]; then
             echo -e ${yellow}$installpackage is already in package.json dependencies object${default}
         fi
     fi
-else
-npm init
-fi
-#extract package.json lines to array
-readarray -t pkgjson < package.json
 }
-
+#Check for package in devdependencies
+checkpackageDev(){
+if [ localpackageadded = true ]; then
+        echo "New package added, bypass package.json devdependencies check"
+    else
+        installpackage=$(grep $pkginstall package.json)
+        echo $installpackage
+        if [ ${#installpackage} -gt 0 ]; then
+        #check for multi versions and if exists then display choices noting that a version already exists in package.json
+        #but for now simply note a version is installed and skip adding it
+            alreadydev=true
+            echo -e ${yellow}$installpackage is already in package.json devdependencies object${default}
+        fi
+    fi
+}
 addpackageDep(){
 cd $cwd
 #make temp package.json file
@@ -346,13 +371,14 @@ else
     count=1
     while (( ${#pkgjson[@]} > i )); do
         pkgline=${pkgjson[i++]}
-        echo $pkgline >> package.njson
-        dep=$(echo $pkgline | grep -o 'dependencies')
             if [ $size = $count ]; then
+                echo $pkgline',' >> package.njson #add comma to last object
                 depends='"dependencies"'
                 echo $depends': {' >> package.njson
                 echo $pkgpath ":" $pkgver >> package.njson
                 echo "}" >> package.njson
+            else
+                echo $pkgline >> package.njson
             fi
         let count+=1
     done
@@ -382,14 +408,17 @@ else
     count=1
     while (( ${#pkgjson[@]} > i )); do
         pkgline=${pkgjson[i++]}
-        echo $pkgline >> package.njson
+
         dep=$(echo $pkgline | grep -o 'devDependencies')
         #if the result is invalid the if statement will generate error however program still executes as expected
         if [ $size = $count ]; then
+            echo $pkgline',' >> package.njson
             depends='"devDependencies"'
             echo $depends': {' >> package.njson
             echo $pkgpath ":" $pkgver >> package.njson
             echo "}" >> package.njson
+        else
+            echo $pkgline >> package.njson
         fi
         let count+=1
     done
@@ -401,6 +430,46 @@ echo -e ${green}$pkginstall $pkgver 'added to package.json devdependencies'${def
 writepackagejson(){
 rm package.json
 mv package.njson package.json
+}
+parcepkgjson(){
+count=1
+depstart=false
+devstart=false
+    while (( ${#pkgjson[@]} > i )); do
+        pkgline=${pkgjson[i++]}
+        #echo -e ${green}$pkgline${default}
+        testforDep=$(echo $pkgline | grep -o 'dependencies')
+        if [ "$testforDep" == "dependencies" ]; then
+            hasdependencies=true
+            depstart=true
+        fi
+        if [ depstart ]; then
+            depend=$(echo $pkgline | grep -0 '}')
+            echo $depend
+            if [ "$depend" !== "}" ] && [ "$depend" !== "}," ]; then
+                echo $pkgline
+            else
+                depstart=false
+            fi
+        fi
+        testforDevDep=$(echo $pkgline | grep -o 'devDependencies')
+        if [ "$testforDevDep" == "devdependencies" ]; then
+            hasdevdependencies=true
+            devstart=true
+        fi
+        if [ devstart ]; then
+            devend=$(echo $pkgline | grep -0 '}')
+            echo $devend
+            if [ "$devend" !== "}" ] && [ "$devend" !== "}," ]; then
+                echo $pkgline
+            else
+                devstart=false
+            fi
+        fi
+        #echo $hasdependencies
+        #echo $hasdevdependencies
+        let count+=1
+    done
 }
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input

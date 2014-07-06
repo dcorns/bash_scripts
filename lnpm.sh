@@ -443,33 +443,34 @@ devstart=false
             hasdependencies=true
             depstart=true
         fi
-        if [ depstart ]; then
+        if [ $depstart = true ]; then
             depend=$(echo $pkgline | grep -0 '}')
-            echo $depend
-            if [ "$depend" !== "}" ] && [ "$depend" !== "}," ]; then
+            #echo $depend
+            if [ "$depend" != "}," ] && [ "$depend" != "}" ]; then
                 echo $pkgline
             else
+                echo $pkgline
                 depstart=false
             fi
         fi
         testforDevDep=$(echo $pkgline | grep -o 'devDependencies')
-        if [ "$testforDevDep" == "devdependencies" ]; then
+        if [ "$testforDevDep" == "devDependencies" ]; then
             hasdevdependencies=true
             devstart=true
         fi
-        if [ devstart ]; then
+        if [ $devstart = true ]; then
             devend=$(echo $pkgline | grep -0 '}')
-            echo $devend
-            if [ "$devend" !== "}" ] && [ "$devend" !== "}," ]; then
+            if [ "$devend" != "}" ] && [ "$devend" != "}," ]; then
                 echo $pkgline
             else
+                echo $pkgline
                 devstart=false
             fi
         fi
-        #echo $hasdependencies
-        #echo $hasdevdependencies
         let count+=1
     done
+    echo $hasdependencies
+    echo $hasdevdependencies
 }
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input

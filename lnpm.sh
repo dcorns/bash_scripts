@@ -484,7 +484,7 @@ echo -e ${green}'Reading package.json'${default}
 #requires depobj, hasdependencies
 makeDepList(){
     if [ $havedependencies = true ]; then
-        echo 'build deplist' , $pkgpath , $pkginstall , $pkgver
+        echo 'build deplist'
         depobjlength=${#depobj[@]}
         dpo=1
         count=0
@@ -494,9 +494,10 @@ makeDepList(){
             basepkgdep=${pkgjsondep%%'--'*}
             #drop everything before package name
             basepkgdep=${basepkgdep##*'/'}
-            echo $basepkgdep , ${#basepkgdep}
+            #drop everything before last version text
+            basepkgdepver=${pkgjsondep##*' '}
+            depverlist[count]=$basepkgdepver
             deplist[count]=$basepkgdep
-            echo ${deplist[count]}
             let dpo+=1
         done
     fi

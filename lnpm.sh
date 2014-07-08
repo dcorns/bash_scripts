@@ -361,8 +361,8 @@ cd $cwd
 touch package.njson
 #if dependencies object already exists in package.json just add the package to it
 if [ $havedependencies = true ]; then
-    while (( ${#pkgjson[@]} > i )); do
-        pkgline=${pkgjson[i++]}
+    while (( ${#pkgjson[@]} > dp )); do
+        pkgline=${pkgjson[dp++]}
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'dependencies')
         if [ "$dep" = 'dependencies' ]; then

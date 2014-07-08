@@ -18,5 +18,8 @@
 "homepage": "https://github.com/dcorns/bash_scripts",
 "dependencies": {
 /data/Projects/node_modules/chai--1.9.0 : 1.9.0
+},
+"devDependencies": {
+/data/Projects/node_modules/chai--1.9.0 : 1.9.0
 }
 }

@@ -189,16 +189,16 @@ echo 'preDeploy'
 install(){
 #Check for package locally, else install from repo, else error invalid package
 setpackage
-#verify or create package.json file if exists check for existance of package in file
+#verify or create package.json file
 checkpackagejson
 #parce package.json and set flags for proccessing
 parcepkgjson
 #Make package dev and dep lists
 makeDepList
 makeDevList
-exit 0
 #if not already in package.json dependencies object, add it
 checkpackageDep
+checkpackageDev
 
 if [ $alreadydep = false ]; then
     echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json dependencies"${default}
@@ -206,7 +206,6 @@ if [ $alreadydep = false ]; then
 fi
 #if parameter 3 -dev add as a devdependency
 if [ "$devinstall" = "-dev" ]; then
-    checkpackageDev
     if [ $alreadydev = false ]; then
         echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json devdependencies"${default}
         addpackageDev
@@ -302,7 +301,7 @@ exit 0
 fi
 }
 
-#check for package.json and if exist, otherwise create it, and read into pkgjson array
+#check for package.json and if exist, otherwise create it
 checkpackagejson()
 {
 #check for package.json and npm init if it does not exist
@@ -313,28 +312,25 @@ if [ "$pkg" = 'package.json' ]; then
 else
 npm init
 fi
-#extract package.json lines to array
-readarray -t pkgjson < package.json
 }
 #Check for package in dependencies
 checkpackageDep(){
 if [ localpackageadded = true ]; then
         echo "New package added, bypass package.json dependencies check"
     else
+        p=0;
         while (( ${#deplist[@]} > p )); do
-            if [ $pkginstall = deplist[p++] ]; then
+            if [ $pkginstall == ${deplist[p]} ]; then
+                if [ $pkgver == ${depverlist[p]} ]; then
                 alreadydep=true
-                echo -e ${yellow}$installpackage is already in package.json dependencies object${default}
-                break
+                echo -e ${yellow}$pkginstall $pkgver is already in package.json dependencies object${default}
+                else
+                echo -e ${yellow}'Another version of' ${deplist[p]} 'is already in package.json!'{default}
+                exit 0
+                fi
             fi
+            let p+=1
         done
-        #installpackage=$(grep $pkginstall package.json) #simple grep all that is required cause in package.json it will always be in as a dependencies if not also as a devdependencies
-        #if [ ${#installpackage} -gt 0 ]; then
-        #check for multi versions and if exists then display choices noting that a version already exists in package.json
-        #but for now simply note a version is installed and skip adding it
-           # alreadydep=true
-            #echo -e ${yellow}$installpackage is already in package.json dependencies object${default}
-        #fi
     fi
 }
 #Check for package in devdependencies
@@ -342,17 +338,24 @@ checkpackageDev(){
 if [ localpackageadded = true ]; then
         echo "New package added, bypass package.json devdependencies check"
     else
-        installpackage=$(grep $pkginstall package.json)
-        echo $installpackage
-        if [ ${#installpackage} -gt 0 ]; then
-        #check for multi versions and if exists then display choices noting that a version already exists in package.json
-        #but for now simply note a version is installed and skip adding it
-            alreadydev=true
-            echo -e ${yellow}$installpackage is already in package.json devdependencies object${default}
-        fi
+        cv=0;
+        while (( ${#devlist[@]} > cv )); do
+            if [ $pkginstall == ${devlist[cv]} ]; then
+                if [ $pkgver == ${devverlist[cv]} ]; then
+                alreadydev=true
+                echo -e ${yellow}$pkginstall $pkgver is already in package.json devDependencies object${default}
+                else
+                echo -e ${yellow}'Another version of' ${devlist[cv]} 'is already in package.json!'${default}
+                exit 0
+                fi
+            fi
+            let cv+=1
+        done
     fi
 }
 addpackageDep(){
+#extract package.json lines to array
+readarray -t pkgjson < package.json
 cd $cwd
 #make temp package.json file
 touch package.njson
@@ -390,16 +393,17 @@ echo -e ${green}$pkginstall $pkgver 'added to package.json dependencies'${defaul
 }
 
 addpackageDev(){
+#extract package.json lines to array
+readarray -t pkgjson < package.json
 cd $cwd
 #make temp package.json file
 touch package.njson
 depends='"devDependencies"'
 if [ $havedevdependencies = true ]; then
-    while (( ${#pkgjson[@]} > i )); do
-        pkgline=${pkgjson[i++]}
+    while (( ${#pkgjson[@]} > ad )); do
+        pkgline=${pkgjson[ad++]}
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'devDependencies')
-        #if the result is invalid the if statement will generate error however program still executes as expected
         if [ "$dep" = 'devDependencies' ]; then
             echo $pkgpath":" $pkgver"," >> package.njson
         fi
@@ -408,8 +412,8 @@ else
     size=${#pkgjson[@]}
     let size-=1
     count=1
-    while (( ${#pkgjson[@]} > i )); do
-        pkgline=${pkgjson[i++]}
+    while (( ${#pkgjson[@]} > ad )); do
+        pkgline=${pkgjson[ad++]}
 
         dep=$(echo $pkgline | grep -o 'devDependencies')
         #if the result is invalid the if statement will generate error however program still executes as expected
@@ -437,6 +441,8 @@ mv package.njson package.json
 #depobj and devobj respectively
 #requires pkgjson
 parcepkgjson(){
+#extract package.json lines to array
+readarray -t pkgjson < package.json
 count=1
 depstart=false
 devstart=false
@@ -463,7 +469,7 @@ echo -e ${green}'Reading package.json'${default}
         fi
         testforDevDep=$(echo $pkgline | grep -o 'devDependencies')
         if [ "$testforDevDep" == "devDependencies" ]; then
-            hasdevdependencies=true
+            havedevdependencies=true
             devstart=true
         fi
         if [ $devstart = true ]; then
@@ -509,8 +515,17 @@ makeDevList(){
         echo 'build devlist'
         devobjlength=${#devobj[@]}
         dvo=1
+        count=0
         while (( devobjlength-1 > dvo )); do
-            echo ${devobj[dpo]}
+            pkgjsondev=${devobj[dvo]}
+            #drop everything after package name
+            basepkgdev=${pkgjsondev%%'--'*}
+            #drop everything before package name
+            basepkgdev=${basepkgdev##*'/'}
+            #drop everything before last version text
+            basepkgdevver=${pkgjsondev##*' '}
+            devverlist[count]=$basepkgdevver
+            devlist[count]=$basepkgdev
             let dvo+=1
         done
     fi

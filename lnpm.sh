@@ -320,12 +320,12 @@ if [ localpackageadded = true ]; then
     else
         p=0;
         while (( ${#deplist[@]} > p )); do
-            if [ $pkginstall == ${deplist[p]} ]; then
-                if [ $pkgver == ${depverlist[p]} ]; then
+            if [ $pkginstall = ${deplist[p]} ]; then
+                if [ $pkgver = ${depverlist[p]} ]; then
                 alreadydep=true
                 echo -e ${yellow}$pkginstall $pkgver is already in package.json dependencies object${default}
                 else
-                echo -e ${yellow}'Another version of' ${deplist[p]} 'is already in package.json!'{default}
+                echo -e ${yellow}'Another version ('${depverlist[p]}') of' ${deplist[p]} 'is already in package.json!'${default}
                 exit 0
                 fi
             fi
@@ -345,7 +345,7 @@ if [ localpackageadded = true ]; then
                 alreadydev=true
                 echo -e ${yellow}$pkginstall $pkgver is already in package.json devDependencies object${default}
                 else
-                echo -e ${yellow}'Another version of' ${devlist[cv]} 'is already in package.json!'${default}
+                echo -e ${yellow}'Another version ('${depverlist[p]}') of' ${deplist[p]} 'is already in package.json!'${default}
                 exit 0
                 fi
             fi
@@ -502,9 +502,12 @@ makeDepList(){
             basepkgdep=${basepkgdep##*'/'}
             #drop everything before last version text
             basepkgdepver=${pkgjsondep##*' '}
+            #drop the comma if it has one
+            basepkgdepver=${basepkgdepver%%','*}
             depverlist[count]=$basepkgdepver
             deplist[count]=$basepkgdep
             let dpo+=1
+            let count+=1
         done
     fi
 }
@@ -524,9 +527,12 @@ makeDevList(){
             basepkgdev=${basepkgdev##*'/'}
             #drop everything before last version text
             basepkgdevver=${pkgjsondev##*' '}
+            #drop the comma if it has one
+            basepkgdevver=${basepkgdevver%%','*}
             devverlist[count]=$basepkgdevver
             devlist[count]=$basepkgdev
             let dvo+=1
+            let count+=1
         done
     fi
 }

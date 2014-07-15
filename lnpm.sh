@@ -26,7 +26,7 @@ cwd=$(pwd)
 #Add parameters to function scopes
 pkginstall=$2
 declare -a currentpaths
-declare -a curentversions
+declare -a currentversions
 devinstall=$3
 declare -a pkgpaths
 declare -a pkglist
@@ -197,6 +197,8 @@ makeDevList
 #if not already in package.json dependencies object, add it
 checkpackageDep
 checkpackageDev
+echo 'install' $alreadydep
+read
 if [ $alreadydep = false ]; then
     echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json dependencies"${default}
     addpackageDep
@@ -245,6 +247,7 @@ if [ "$pkginstall" != "" ]; then
 #see if the package ($pkginstall) exists in the local directory
     #get local package list set currentpaths and currentversions if at least one package is in the list
     getPackageCount
+    echo 'setpackage' ${pkgcount}
     if [ ${pkgcount} -gt 0 ]; then
         #set package path
         pkgpath=${currentpaths[0]}
@@ -280,7 +283,11 @@ if [ "$pkginstall" != "" ]; then
             echo -e ${green}$pkginstall 'added to local npm storage'${default}
             localpackageadded=true
             setupDirs
+            #getPackageCount also loads currentpaths and currentversions from directory name so must run again here
+            #after new package directory is setup in order to set pkgpath and pkgver
             getPackageCount
+            pkgpath=${currentpaths[0]}
+            pkgver=${currentversions[0]}
         else
             echo -e ${red}$pkginstall 'does not exist in local directory or in npm repository'${default}
         exit 0
@@ -306,14 +313,14 @@ fi
 }
 #Check for package in dependencies
 checkpackageDep(){
-if [ localpackageadded = true ]; then
+if [ $localpackageadded = true ]; then
         echo "New package added, bypass package.json dependencies check"
     else
         p=0;
-        while (( ${#deplist[@]} > p )); do
-            if [ $pkginstall = ${deplist[p]} ]; then
-                if [ $pkgver = ${depverlist[p]} ]; then
+        while (( ${#deplist[@]} > $p )); do
+            if [ $pkginstall = ${deplist[$p]} ]; then
                 alreadydep=true
+                if [ $pkgver = ${depverlist[$p]} ]; then
                 echo -e ${yellow}$pkginstall $pkgver is already in package.json dependencies object${default}
                 else
                 echo -e ${yellow}'Another version ('${depverlist[p]}') of' ${deplist[p]} 'is already in package.json!'${default}
@@ -326,13 +333,13 @@ if [ localpackageadded = true ]; then
 }
 #Check for package in devdependencies
 checkpackageDev(){
-if [ localpackageadded = true ]; then
+if [ $localpackageadded = true ]; then
         echo "New package added, bypass package.json devdependencies check"
     else
         cv=0;
-        while (( ${#devlist[@]} > cv )); do
-            if [ $pkginstall == ${devlist[cv]} ]; then
-                if [ $pkgver == ${devverlist[cv]} ]; then
+        while (( ${#devlist[@]} > $cv )); do
+            if [ $pkginstall == ${devlist[$cv]} ]; then
+                if [ $pkgver == ${devverlist[$cv]} ]; then
                 alreadydev=true
                 echo -e ${yellow}$pkginstall $pkgver is already in package.json devDependencies object${default}
                 else
@@ -345,6 +352,8 @@ if [ localpackageadded = true ]; then
     fi
 }
 addpackageDep(){
+echo 'addpackageDep' $pkgpath , $pkgver
+read
 #extract package.json lines to array
 readarray -t pkgjson < package.json
 cd $cwd
@@ -365,8 +374,6 @@ else
     size=${#pkgjson[@]}
     let size-=1
     count=1
-    echo $pkgpath , $pkgver
-    exit
     while (( ${#pkgjson[@]} > dp )); do
         pkgline=${pkgjson[dp++]}
             if [ $size = $count ]; then
@@ -483,7 +490,7 @@ echo -e ${green}'Reading package.json'${default}
 #requires depobj, hasdependencies
 makeDepList(){
     if [ $havedependencies = true ]; then
-        echo 'build deplist'
+        echo -e ${green}'building deplist'${default}
         depobjlength=${#depobj[@]}
         dpo=1
         count=0

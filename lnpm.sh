@@ -8,6 +8,7 @@ nd='/data/Projects/node_modules/'
 red='\e[0;31m'
 green='\e[0;32m'
 yellow='\e[1;33m'
+blue='\e[1;34m'
 default='\e[0m'
 havedependencies=false
 havedevdependencies=false
@@ -32,6 +33,7 @@ declare -a pkglist
 declare -a verlist
 pkgpath=''
 pkgver=''
+pkgcount=0
 #******************************************Functions********************************************************************
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++setupDirs++++++++++++++++++++++++++++++++++++++++++++++
@@ -39,6 +41,7 @@ pkgver=''
 setupDirs(){
 #Rename each directory with a 0-0-0 extention for version identification
     #Proccess directories
+    preparedcount=0
     cd $nd
     for path in $nd*; do
     [ -d "${path}" ] || continue # if not a directory, skip
@@ -75,11 +78,15 @@ setupDirs(){
     #if the directory does not have a version number with name add it here otherwise leave alone
     if [ "$newdir" != "$dirname" ]; then
         mv $dirname "$newdir"
-    else
-        echo -e ${yellow}$dirname 'already prepared, nothing to do.'${default}
+        echo -e ${green}$dirname 'prepared'${default}
+        let preparedcount+=1
     fi
 done
-exit 0
+    if [ $preparedcount -gt 1 ]; then
+        echo -e ${green}$preparedcount directories prepared${default}
+    else
+        echo -e ${green}$preparedcount directory prepared${default}
+    fi
 }
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++update+++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -89,7 +96,7 @@ cd $nd
 #Create a temp directory and copy all modules over, striping them their version from directory name
 #Run npm install
 #Configure the temp directories and copy what does not already exist to the local folder, then remove temp directory and contents
-if [ "$2" = '' ]; then
+if [ "$pkginstall" == "" ]; then
 echo -e ${yellow}'update all chosen: This could take a while. To avoid this include a package to update as the second parameter'${default}
         echo "Enter 'yes' to continue"
         read
@@ -107,6 +114,7 @@ echo -e ${yellow}'update all chosen: This could take a while. To avoid this incl
         fi
     else
         echo -e ${yellow}'module included'${default}
+
     fi
 
 }
@@ -115,17 +123,7 @@ echo -e ${yellow}'update all chosen: This could take a while. To avoid this incl
 #revert the local folder or some other folder to standard package names
 revertDirs(){
 cd $nd
-echo -e ${yellow}'Reverting local node package directories will break all projects relying on lnpm'${default}
-echo -e ${yellow}'Make sure to remove the path from each package entry in package.json and run npm install'${default}
-echo -e ${yellow}'in the projects directory for each lnpm project you wish to make an npm'${default}
-echo -e ${yellow}'Since lnpm allows you to store multiple package versions by adding the version number to the'${default}
-echo -e ${yellow}'directory name (normally just package name), this proccess will not alter'${default}
-echo -e ${yellow}'directory names that are part multi packages you will need to rename the version desired manually'${default}
-echo -e ${yellow}'Enter yes to continue'${default}
-read
-if [ "$REPLY" != 'yes' ]; then
-    exit 0
-fi
+
 dircount=0
 dupscount=0
 for path in $nd*; do
@@ -187,7 +185,7 @@ echo 'preDeploy'
 #++++++++++++++++++++++++++++++++++++++++++++++++++++install++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #*************************************lnpm install code*****************************************************************
 install(){
-#Check for package locally, else install from repo, else error invalid package
+#Check for package locally, else install from repo and setup the directory, else error invalid package
 setpackage
 #verify or create package.json file
 checkpackagejson
@@ -199,7 +197,6 @@ makeDevList
 #if not already in package.json dependencies object, add it
 checkpackageDep
 checkpackageDev
-
 if [ $alreadydep = false ]; then
     echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json dependencies"${default}
     addpackageDep
@@ -244,29 +241,21 @@ done
 
 setpackage()
 {
-if [ $pkginstall != '' ]; then
+if [ "$pkginstall" != "" ]; then
 #see if the package ($pkginstall) exists in the local directory
     #get local package list set currentpaths and currentversions if at least one package is in the list
-    splitdirnames
-    pkgexists=0
-    pkgidx=0
-    for p in ${pkglist[@]}; do
-        if [ ${p} = $pkginstall ]; then
-            currentpaths[$pkgexists]=${pkgpaths[$pkgidx]}
-            currentversions[$pkgexists]=${verlist[$pkgidx]}
-            let pkgexists=${pkgexists}+1
-        fi
-        let pkgidx=${pkgidx}+1
-    done
-    if [ ${pkgexists} -gt 0 ]; then
+    getPackageCount
+    if [ ${pkgcount} -gt 0 ]; then
         #set package path
         pkgpath=${currentpaths[0]}
         pkgver=${currentversions[0]}
-        echo -e ${green}$pkgexists 'package/s found in local directory' $nd${default}
+        if [ ${pkgcount} -lt 2 ]; then
+        echo -e ${green}$pkgcount $pkginstall 'package found in local directory' $nd${default}
+        fi
         #If more than one version then manage (pkgexists advances one more before exiting loop)
-
-        if [ $pkgexists -gt 1 ]; then
-            echo 'Select Vesion'
+        if [ $pkgcount -gt 1 ]; then
+        echo -e ${green}$pkgcount $pkginstall 'packages found in local directory' $nd${default}
+            echo -e ${blue}'Select Vesion'${default}
             options=${currentversions[@]}
             select s in $options; do
             count=0
@@ -286,17 +275,19 @@ if [ $pkginstall != '' ]; then
         echo -e ${green}'Installing module from npm external repository'${default}
         cd $nd
         npm install $pkginstall
-        m=$(find $pkginstall)
-        if [ '$m' = ${pkginstall} ]; then
+        getPackageCount
+        if [ $pkgcount -gt 0 ]; then
             echo -e ${green}$pkginstall 'added to local npm storage'${default}
             localpackageadded=true
+            setupDirs
+            getPackageCount
         else
             echo -e ${red}$pkginstall 'does not exist in local directory or in npm repository'${default}
         exit 0
         fi
     fi
 else
-echo -e ${red}'Package' $pkginstall 'not found locally or externally'${default}
+echo -e ${red}'No package specified for installation'${default}
 exit 0
 fi
 }
@@ -374,6 +365,8 @@ else
     size=${#pkgjson[@]}
     let size-=1
     count=1
+    echo $pkgpath , $pkgver
+    exit
     while (( ${#pkgjson[@]} > dp )); do
         pkgline=${pkgjson[dp++]}
             if [ $size = $count ]; then
@@ -441,7 +434,7 @@ mv package.njson package.json
 #depobj and devobj respectively
 #requires pkgjson
 parcepkgjson(){
-#extract package.json lines to array
+#extract package.json lines to array and other stuff that isn't really needed
 readarray -t pkgjson < package.json
 count=1
 depstart=false
@@ -537,6 +530,20 @@ makeDevList(){
     fi
 }
 
+getPackageCount(){
+    splitdirnames
+    pkgidx=0
+    pkgcount=0
+    for p in ${pkglist[@]}; do
+        if [ ${p} = $pkginstall ]; then
+            currentpaths[$pkgcount]=${pkgpaths[$pkgidx]}
+            currentversions[$pkgcount]=${verlist[$pkgidx]}
+            let pkgcount=${pkgcount}+1
+        fi
+        let pkgidx=${pkgidx}+1
+    done
+    echo ${currentpaths[0]}
+}
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input
 case $1 in
@@ -554,6 +561,17 @@ case $1 in
         exit 0
      ;;
     'revert')
+        echo -e ${yellow}'Reverting local node package directories will break all projects relying on lnpm'${default}
+        echo -e ${yellow}'Make sure to remove the path from each package entry in package.json and run npm install'${default}
+        echo -e ${yellow}'in the projects directory for each lnpm project you wish to make an npm'${default}
+        echo -e ${yellow}'Since lnpm allows you to store multiple package versions by adding the version number to the'${default}
+        echo -e ${yellow}'directory name (normally just package name), this proccess will not alter'${default}
+        echo -e ${yellow}'directory names that are part multi packages you will need to rename the version desired manually'${default}
+        echo -e ${yellow}'Enter yes to continue'${default}
+        read
+        if [ "$REPLY" != 'yes' ]; then
+            exit 0
+        fi
         revertDirs
         exit 0
     ;;

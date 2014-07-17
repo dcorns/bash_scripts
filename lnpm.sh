@@ -197,8 +197,7 @@ makeDevList
 #if not already in package.json dependencies object, add it
 checkpackageDep
 checkpackageDev
-echo 'install' $alreadydep
-read
+
 if [ $alreadydep = false ]; then
     echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json dependencies"${default}
     addpackageDep
@@ -226,6 +225,7 @@ esac
 }
 
 splitdirnames(){
+    dircount=0
     for path in $nd*; do
     [ -d "${path}" ] || continue # if not a directory, skip
     basedirname="$(basename "${path}")"
@@ -247,7 +247,6 @@ if [ "$pkginstall" != "" ]; then
 #see if the package ($pkginstall) exists in the local directory
     #get local package list set currentpaths and currentversions if at least one package is in the list
     getPackageCount
-    echo 'setpackage' ${pkgcount}
     if [ ${pkgcount} -gt 0 ]; then
         #set package path
         pkgpath=${currentpaths[0]}
@@ -278,16 +277,11 @@ if [ "$pkginstall" != "" ]; then
         echo -e ${green}'Installing module from npm external repository'${default}
         cd $nd
         npm install $pkginstall
+        setupDirs
         getPackageCount
         if [ $pkgcount -gt 0 ]; then
             echo -e ${green}$pkginstall 'added to local npm storage'${default}
-            localpackageadded=true
-            setupDirs
-            #getPackageCount also loads currentpaths and currentversions from directory name so must run again here
-            #after new package directory is setup in order to set pkgpath and pkgver
-            getPackageCount
-            pkgpath=${currentpaths[0]}
-            pkgver=${currentversions[0]}
+            setpackage
         else
             echo -e ${red}$pkginstall 'does not exist in local directory or in npm repository'${default}
         exit 0
@@ -352,8 +346,6 @@ if [ $localpackageadded = true ]; then
     fi
 }
 addpackageDep(){
-echo 'addpackageDep' $pkgpath , $pkgver
-read
 #extract package.json lines to array
 readarray -t pkgjson < package.json
 cd $cwd
@@ -549,7 +541,6 @@ getPackageCount(){
         fi
         let pkgidx=${pkgidx}+1
     done
-    echo ${currentpaths[0]}
 }
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input

@@ -32,19 +32,23 @@ These scripts are intended to be useful on any distro and in most cases on both 
 
 extraGitinit.sh--This will initialize a local git, create an MIT License file and a blank README.md, create a matching repository on github and a remote to push and pull with. It also adds a testing branch to the local git. You must first alter lines 37 and 39 to by replacing <YourGitHubSite> with your git hub site and <YourGitHubUserName> with your git hub user name. After doing that I would suggest setting up a symbolic link to it as it will prove quite useful if you are doing a lot of projects.
 ##################### lnpm.sh Manage and distribute node package functionality in local file structure ##############################################
-lnpm--This, when completed will solve the problem of have node_modules installed in every directory in which you have a node project. It will allow node modules to be read from a centralized directory on the file system and when a particular package does not exist it will download the package to the centralized directory for continued use. No more downloading packages every time you start a new node project and no longer have node packages spread out all over your hard drive. It also allows for the centralized storage and use of multiple package versions.
+lnpm--This script solves the problem of having node_modules installed in every directory in which you have a node project. It allows node modules to be read from a centralized directory on the file system and when a particular package does not exist it will download the package to the centralized directory for continued use. No more downloading packages every time you start a new node project and no longer do node packages have to be spread out all over your hard drive. Every version of a package in use conveniently stored in one place.
 
-BEFORE USING lnpm.sh YOU MUST CHANGE LINE 6 OF THE SCRIPT TO THE FULL PATH OF THE DIRECTORY YOU WILL USE TO STORE THE NODE PACKAGES
+BEFORE USING lnpm.sh YOU MUST CHANGE THE nd VARIABLE LINE 6 OF THE SCRIPT TO POINT TO THE FULL PATH OF THE DIRECTORY YOU WILL USE TO STORE THE NODE PACKAGES
 
-lnpm.sh install <module_name>
-Searches the local directory specified in $nd for the module and if it exist it will do the following as needed:
+After that is done, the easiest way to get started is to copy and existing node_modules directory from one of your existing projects to where you want your centralized location. Then run lnpm configure. This will change all the directory names to <packagename>---<version>. This makes the packages usable with lnpm and your ready to go. You could simply create an empty directory and assign it to nd, but this way will save you some downloading which is one of the main reasons to use this script. You can easily add other packages to the nd directory at anytime and run lnpm configure again to setup the new directories.
+
+lnpm.sh install <package name>
+Searches the local directory for the package and if it exist it will do the following as needed:
 If no package.json exists, it will run npm.init to interactively create it.
 If no dependencies object exists, it will add it to the package.json.
-If no reference to the module exists in the dependencies object, it will be added with fixed/latest version, otherwise it will notify that the package is already installed.
+If no reference to the package exists in the dependencies object, it will be added.
+If the package does not exist in the local directory, it will be download and assimilated into the local directory and the previous steps will then be carried out.
+Note that if there is more that one version of a package in the local directory, you will be prompted for the one to install.
 
 lnpm.sh install <module_name> -dev
 Performs all the tasks of regular install but also will perform the same steps to add as a dev dependency
-If both dependencies and devDependencies have a reference to the module it will exit with package is already installed notification.
+If both dependencies and devDependencies have a reference to the module it will exit with a package is already installed notification.
 
 lnpm.sh configure
 Makes an existing node_modules directory compatible with lnpm by renaming the directories to include versions
@@ -53,14 +57,11 @@ lnpm.sh update
 Need to implement for updating the local folder modules
 
 lnpm.sh revert
-Reverts the lmpm modules directory directories to standard node names. Since lnpm allows the centralized storage of multiple package versions by adding the version to the directory name, directories that are part of a multi-version package will remain unaltered. You will need to choose a version and the directory manually
+Reverts the lmpm modules directory directories to standard node names. Since lnpm allows the centralized storage of multiple package versions by adding the version to the directory name, directories that are part of a multi-version package will remain unaltered. You will need to choose a version and rename the directory manually
 
 lnpm.sh deploy
 Need to implement for copying modules used by project to the project directory, changing directory names back to just the package name and modifying package.json to have the modified path. So the application can be deployed off the local system.
 
-Overall problems to overcome:
-There are different versions of node packages. One may be used in one project and a different version in another project. If the local node_modules folder is simply updated, it will replace the existing version of a module. This will be problematic since projects using older versions will no longer be able to access the version of the module on which it relies.
-proposed solution: Add version information of each module to the directory name. Add an 'update' parameter to lnpm that creates the directory structure accordingly when updating from repository. Modify lnpm install to do the same when it adds a missing module from the registry.
 
 ############################ Additional Information ##############################
 Check back for more bash scripts as I will be adding them as I discover new ways to use them to help make me a more productive developer.

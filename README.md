@@ -1,5 +1,5 @@
 bash-scripts
-To run them change to the directory where you downloaded them and preceed the script that you want to run with bash (bash Ichrome.sh)
+run by using ./<script name><parameters>
 
 alternativly change the permissions on the script: (chmod u+x extraGitInit.sh) and you will be able to run them by typing in the name alone.
 

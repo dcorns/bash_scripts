@@ -1,33 +1,18 @@
 {
-"name": "bashscripts",
-"version": "0.0.0",
-"description": "bash-scripts To run them change to the directory where you downloaded them and preceed the script that you want to run with bash (bash Ichrome.sh)",
-"main": "index.js",
-"scripts": {
-"test": "echo \"Error: no test specified\" && exit 1"
-},
-"repository": {
-"type": "git",
-"url": "https://github.com/dcorns/bash_scripts.git"
-},
-"author": "",
-"license": "ISC",
-"bugs": {
-"url": "https://github.com/dcorns/bash_scripts/issues"
-},
-"homepage": "https://github.com/dcorns/bash_scripts",
-"dependencies": {
-/data/Projects/node_modules/invoker--1.0.1: 1.0.1,
-/data/Projects/node_modules/pie-chart--0.0.1: 0.0.1,
-/data/Projects/node_modules/chart--0.1.2: 0.1.2,
-/data/Projects/node_modules/express--3.5.0: 3.5.0,
-/data/Projects/node_modules/chai--1.9.0 : 1.9.0
-},
-"devDependencies": {
-/data/Projects/node_modules/invoker--1.0.1: 1.0.1,
-/data/Projects/node_modules/chart--0.1.2: 0.1.2,
-/data/Projects/node_modules/pie-chart--0.0.1: 0.0.1,
-/data/Projects/node_modules/express--3.5.0: 3.5.0,
-/data/Projects/node_modules/chai--1.9.0 : 1.9.0
-}
+  "name": "handlebars-mvc",
+  "version": "0.0.0",
+  "description": "This is not a great example, it needs some more work!",
+  "main": "controller.js",
+  "dependencies": {
+    "grunt": "~0.4.2"
+  },
+  "devDependencies": {
+    "grunt": "^0.4.2",
+    "grunt-contrib-jshint": "^0.8.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
 }

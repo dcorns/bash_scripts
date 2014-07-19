@@ -27,6 +27,7 @@ cwd=$(pwd)
 pkginstall=$2
 declare -a currentpaths
 declare -a currentversions
+latestLocalVer=0.0.0;
 devinstall=$3
 declare -a pkgpaths
 declare -a pkglist
@@ -103,18 +104,39 @@ echo -e ${yellow}'update all chosen: This could take a while. To avoid this incl
         if [ "$REPLY" = 'yes' ]; then
             echo 'Polling latest local versions'
             #Create temp directory for module proccessing
-            cd $nd
             mkdir incoming_modules
             cd incoming_modules
+
+        else
+            echo -e ${red}'user canceled update'${default}
             cd ..
             rm incoming_modules -R
-        else
-            echo -e ${red}'user canceled'${default}
             exit 0
         fi
     else
-        echo -e ${yellow}'module included'${default}
-
+        echo -e ${yellow}$pkginstall 'module included'${default}
+        #verifiy existing package exists, if not offer to install it
+        getPackageCount
+        if [ ${pkgcount} -lt 1 ]; then
+            echo -e ${yellow}'An existing version of' $pkginstall 'was not found, would you like to install it instead? (no to cancel) (yes)'${default}
+            read
+            if [ "$REPLY" == "no" ]; then
+               echo -e ${red}'User cancled update'${default}
+               exit 0
+            else
+                npm install $pkginstall
+                setupDirs
+                exit 0
+            fi
+        fi
+        setLatestLocalVer
+        mkdir "0"
+        cp -r  ${currentpaths[0]} $nd"0"
+        mv ${currentpaths[0]} $pkginstall
+        npm update $pkginstall
+        cp -r $nd"0/"$pkginstall"--"$latestLocalVer $nd
+        rm "0" -R
+        setupDirs
     fi
 
 }
@@ -530,6 +552,8 @@ makeDevList(){
 }
 
 getPackageCount(){
+#Checks for versions of pkginstall in the local directory and pkgcount+1 for each version found
+#If there is a match, it also sets currentpaths and currentversions arrays to match directories found
     splitdirnames
     pkgidx=0
     pkgcount=0
@@ -541,6 +565,48 @@ getPackageCount(){
         fi
         let pkgidx=${pkgidx}+1
     done
+}
+
+convert(){
+    parcepkgjson
+    makeDepList
+    makeDevList
+}
+
+setLatestLocalVer(){
+    getPackageCount
+    if [ ${pkgcount} -lt 2 ]; then
+        latestLocalVer=${currentversions[0]}
+    else
+        if [ ${pkgcount} -gt 1 ]; then
+            cV1=0
+            cV2=0
+            cV3=0
+            cVtest=""
+            for cV in ${currentversions[@]}; do
+                idx=`expr index ${cV} .`
+                cVtest=${cV:${idx}}
+                V1=${cV:0:${idx}-1}
+                if [ ${V1} -ge ${cV1} ]; then
+                    cV1=${V1}
+                fi
+            done
+            for cV in ${currentversions[@]}; do
+                idx=`expr index ${cVtest} .`
+                V2=${cVtest:0:${idx}-1}
+                if [[ ${V1} -eq ${cV1} ]] && [[ ${V2} -ge ${cV2} ]]; then
+                    cV2=${V2}
+                fi
+            done
+            for cV in ${currentversions[@]}; do
+                cVtest=${cVtest:${idx}}
+                if [[ ${V1} -eq ${cV1} ]] && [[ ${V2} -eq ${cV2} ]] && [[ ${cVtest} -gt ${cV3} ]]; then
+                    cV3=${cVtest}
+                fi
+            done
+            latestLocalVer=${cV1}.${cV2}.${cV3}
+        fi
+    fi
 }
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input
@@ -575,6 +641,10 @@ case $1 in
     ;;
     'deploy')
         preDeploy
+        exit 0
+    ;;
+    'convert')
+        convert
         exit 0
     ;;
     *)

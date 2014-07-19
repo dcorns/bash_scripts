@@ -31,6 +31,9 @@ Igit--installs git and runs some interactive prompts for setting some of the glo
 These scripts are intended to be useful on any distro and in most cases on both linux and mac.
 
 extraGitinit.sh--This will initialize a local git, create an MIT License file and a blank README.md, create a matching repository on github and a remote to push and pull with. It also adds a testing branch to the local git. You must first alter lines 37 and 39 to by replacing <YourGitHubSite> with your git hub site and <YourGitHubUserName> with your git hub user name. After doing that I would suggest setting up a symbolic link to it as it will prove quite useful if you are doing a lot of projects.
+
+
+
 ##################### lnpm.sh Manage and distribute node package functionality in local file structure ##############################################
 lnpm--This script solves the problem of having node_modules installed in every directory in which you have a node project. It allows node modules to be read from a centralized directory on the file system and when a particular package does not exist it will download the package to the centralized directory for continued use. No more downloading packages every time you start a new node project and no longer do node packages have to be spread out all over your hard drive. Every version of a package in use conveniently stored in one place.
 

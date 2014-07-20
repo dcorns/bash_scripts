@@ -27,7 +27,6 @@ cwd=$(pwd)
 pkginstall=$2
 declare -a currentpaths
 declare -a currentversions
-latestLocalVer=0.0.0;
 devinstall=$3
 declare -a pkgpaths
 declare -a pkglist
@@ -94,19 +93,36 @@ done
 #add latest packages from npm registry to local directory
 update(){
 cd $nd
+#Run setupDirs in case update is being run on a directory that has not yet configured sub directory names
+setupDirs
 #Create a temp directory and copy all modules over, striping them their version from directory name
-#Run npm install
+#Run npm update
 #Configure the temp directories and copy what does not already exist to the local folder, then remove temp directory and contents
 if [ "$pkginstall" == "" ]; then
 echo -e ${yellow}'update all chosen: This could take a while. To avoid this include a package to update as the second parameter'${default}
         echo "Enter 'yes' to continue"
         read
         if [ "$REPLY" = 'yes' ]; then
-            echo 'Polling latest local versions'
-            #Create temp directory for module proccessing
-            mkdir incoming_modules
-            cd incoming_modules
-
+            splitdirnames
+            count=0
+            pkgchecked=false
+            currentpkglist=${pkglist[@]}
+            declare -a pkgProccessed
+            for pkg in ${currentpkglist[@]}; do
+                #pkglist is part of an array set that includes pkgverlist and pkgpaths so pkglist may have duplicate package names. So the following filter is required to avoid multiple upgrades on the same package
+                pkgchecked=false
+                for ppkg in ${pkgProccessed[@]}; do
+                    if [ ${pkg} = ${ppkg} ]; then
+                        pkgchecked=true
+                    fi
+                done
+                if [ ${pkgchecked} != true ]; then
+                    pkginstall=${pkg}
+                    updateLocalPackage
+                    pkgProccessed[count]=${pkg}
+                    let count+=1
+                fi
+            done
         else
             echo -e ${red}'user canceled update'${default}
             cd ..
@@ -129,16 +145,9 @@ echo -e ${yellow}'update all chosen: This could take a while. To avoid this incl
                 exit 0
             fi
         fi
-        setLatestLocalVer
-        mkdir "0"
-        cp -r  ${currentpaths[0]} $nd"0"
-        mv ${currentpaths[0]} $pkginstall
-        npm update $pkginstall
-        cp -r $nd"0/"$pkginstall"--"$latestLocalVer $nd
-        rm "0" -R
-        setupDirs
+        updateLocalPackage
     fi
-
+    echo -e ${green}'Update Complete'${default}
 }
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++revertDirs+++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -574,6 +583,7 @@ convert(){
 }
 
 setLatestLocalVer(){
+    local latestLocalVer=0.0.0
     getPackageCount
     if [ ${pkgcount} -lt 2 ]; then
         latestLocalVer=${currentversions[0]}
@@ -607,7 +617,24 @@ setLatestLocalVer(){
             latestLocalVer=${cV1}.${cV2}.${cV3}
         fi
     fi
+    echo ${latestLocalVer}
 }
+
+updateLocalPackage(){
+    local lv=$(setLatestLocalVer)
+    mkdir "0"
+    cp -r  $nd$pkginstall"--"$lv $nd"0"
+    mv $nd$pkginstall"--"$lv $pkginstall
+    read
+    npm update $pkginstall
+    read
+    cp -r $nd"0/"$pkginstall"--"$lv $nd
+    read
+    rm "0" -R
+    read
+    setupDirs
+}
+
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input
 case $1 in

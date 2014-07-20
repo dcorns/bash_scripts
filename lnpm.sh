@@ -582,7 +582,7 @@ convert(){
     makeDevList
 }
 
-setLatestLocalVer(){
+getLatestLocalVer(){
     local latestLocalVer=0.0.0
     getPackageCount
     if [ ${pkgcount} -lt 2 ]; then
@@ -621,17 +621,14 @@ setLatestLocalVer(){
 }
 
 updateLocalPackage(){
-    local lv=$(setLatestLocalVer)
+    local lv=$(getLatestLocalVer)
     mkdir "0"
     cp -r  $nd$pkginstall"--"$lv $nd"0"
     mv $nd$pkginstall"--"$lv $pkginstall
-    read
     npm update $pkginstall
-    read
+    setupDirs
     cp -r $nd"0/"$pkginstall"--"$lv $nd
-    read
     rm "0" -R
-    read
     setupDirs
 }
 

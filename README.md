@@ -49,15 +49,15 @@ If no reference to the package exists in the dependencies object, it will be add
 If the package does not exist in the local directory, it will be download and assimilated into the local directory and the previous steps will then be carried out.
 Note that if there is more that one version of a package in the local directory, you will be prompted for the one to install.
 
-lnpm.sh install <module_name> -dev
+lnpm.sh install <package_name> -dev
 Performs all the tasks of regular install but also will perform the same steps to add as a dev dependency
-If both dependencies and devDependencies have a reference to the module it will exit with a package is already installed notification.
+If both dependencies and devDependencies have a reference to the package in package.json it will exit with a package is already installed notification.
 
 lnpm.sh configure
-Makes an existing node_modules directory compatible with lnpm by renaming the directories to include versions
+Makes an existing node_modules directory compatible with lnpm.sh by renaming the directories to include versions
 
-lnpm.sh update
-Need to implement for updating the local folder modules
+lnpm.sh update <package_name>
+Without a package name this will add the latest version of all packages not already stored in the local folder. If a package name is provided only that package will be affected.
 
 lnpm.sh revert
 Reverts the lmpm modules directory directories to standard node names. Since lnpm allows the centralized storage of multiple package versions by adding the version to the directory name, directories that are part of a multi-version package will remain unaltered. You will need to choose a version and rename the directory manually

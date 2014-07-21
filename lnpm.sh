@@ -87,6 +87,7 @@ done
     else
         echo -e ${green}$preparedcount directory prepared${default}
     fi
+    echo ${preparedcount}
 }
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++update+++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -621,15 +622,64 @@ getLatestLocalVer(){
 }
 
 updateLocalPackage(){
-    local lv=$(getLatestLocalVer)
-    mkdir "0"
-    cp -r  $nd$pkginstall"--"$lv $nd"0"
-    mv $nd$pkginstall"--"$lv $pkginstall
-    npm update $pkginstall
-    setupDirs
-    cp -r $nd"0/"$pkginstall"--"$lv $nd
-    rm "0" -R
-    setupDirs
+
+    local rver=$(checkForLatestVer ${pkginstall})
+    if [ ${rver} != 0 ]; then
+        cd ${nd}
+        npm install ${pkginstall}
+        setupDirs
+        dirsSetup=${preparedcount}
+            if [ $dirsSetup -gt 0 ]; then
+                echo -e ${green}$pkginstall 'version' ${rver} 'added to local package directory.'${default}
+            else
+                echo -e ${red}$pkginstall 'version' ${rver} 'was not added to local package directory.'${default}
+            fi
+    else
+        echo -e ${yellow}'Latest version of' ${pkginstall} 'already installed locally'${default}
+    fi
+}
+
+writeRemoteView(){
+    npm view $1 > ${nd}remoteView.tmp
+}
+
+getRemoteLatestVer(){
+    writeRemoteView $1
+    local rvers=$(grep "version:" ${nd}remoteView.tmp)
+    #extract from version field to retrieve version number
+    local rvers=${rvers#*:} #remove most everything left of the colon
+    #get rid of extra space, comma and quotes
+    local rverslength=${#rvers}
+    rvers=${rvers:2:rverslength-4}
+    echo ${rvers}
+}
+
+checkForLatestVer(){
+local rlv=$(getRemoteLatestVer $1)
+setPackageCount $1
+local result=${rlv}
+    for cp in ${currentversions[@]}; do
+        if [ ${cp} = ${rlv} ]; then
+            result=0
+        fi
+    done
+echo ${result}
+}
+
+setPackageCount(){
+#Checks for versions of pkginstall in the local directory and pkgcount+1 for each version found
+#If there is a match, it also sets currentpaths and currentversions arrays to match directories found
+    splitdirnames
+    pkgidx=0
+    pkgcount=0
+    for p in ${pkglist[@]}; do
+        if [ ${p} = $1 ]; then
+            currentpaths[$pkgcount]=${pkgpaths[$pkgidx]}
+            currentversions[$pkgcount]=${verlist[$pkgidx]}
+            let pkgcount=${pkgcount}+1
+        fi
+        let pkgidx=${pkgidx}+1
+    done
 }
 
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////

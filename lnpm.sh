@@ -87,7 +87,6 @@ done
     else
         echo -e ${green}$preparedcount directory prepared${default}
     fi
-    echo ${preparedcount}
 }
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++update+++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -210,7 +209,7 @@ exit 0
 
 #+++++++++++++++++++++++++++++++++++++++++++++++preDeploy+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #copy packages to project directory revert directory names and update package.json for deployment
-preDeploy(){
+prepDeploy(){
 echo 'preDeploy'
 }
 
@@ -267,10 +266,11 @@ splitdirnames(){
     vers=${basedirname##*'--'}
     #add values to arrays
     pkglist[$dircount]=$basedir
-    verlist[$dircount]=$vers
-    pkgpaths[$dircount]=$nd$basedirname
+    verlist[$dircount]='"'$vers'"'
+    pkgpaths[$dircount]='"'$nd$basedirname'"'
     let dircount=dircount+1
 done
+
 }
 
 setpackage()
@@ -390,7 +390,7 @@ if [ $havedependencies = true ]; then
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'dependencies')
         if [ "$dep" = 'dependencies' ]; then
-            echo $pkgpath":" $pkgver"," >> package.njson
+            echo $pkgpath ":" $pkgver"," >> package.njson
         fi
     done
 else
@@ -429,7 +429,7 @@ if [ $havedevdependencies = true ]; then
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'devDependencies')
         if [ "$dep" = 'devDependencies' ]; then
-            echo $pkgpath":" $pkgver"," >> package.njson
+            echo $pkgpath ":" $pkgver"," >> package.njson
         fi
     done
 else
@@ -521,11 +521,13 @@ makeDepList(){
         while (( depobjlength-1 > dpo )); do
             pkgjsondep=${depobj[dpo]}
             #drop everything after package name
-            basepkgdep=${pkgjsondep%%'--'*}
+            basepkgdep=${pkgjsondep%%':'*}
+            #echo ${basepkgdep}
             #drop everything before package name
-            basepkgdep=${basepkgdep##*'/'}
+            #basepkgdep=${basepkgdep##*'/'}
+            #echo ${basepkgdep}
             #drop everything before last version text
-            basepkgdepver=${pkgjsondep##*' '}
+            basepkgdepver=${pkgjsondep##*':'}
             #drop the comma if it has one
             basepkgdepver=${basepkgdepver%%','*}
             depverlist[count]=$basepkgdepver
@@ -539,18 +541,18 @@ makeDepList(){
 #requires devobj, hasdevdependencies
 makeDevList(){
     if [ $havedevdependencies = true ]; then
-        echo 'build devlist'
+        echo -e ${green}'building devlist'${default}
         devobjlength=${#devobj[@]}
         dvo=1
         count=0
         while (( devobjlength-1 > dvo )); do
             pkgjsondev=${devobj[dvo]}
             #drop everything after package name
-            basepkgdev=${pkgjsondev%%'--'*}
+            basepkgdev=${pkgjsondev%%':'*}
             #drop everything before package name
-            basepkgdev=${basepkgdev##*'/'}
+            #basepkgdev=${basepkgdev##*'/'}
             #drop everything before last version text
-            basepkgdevver=${pkgjsondev##*' '}
+            basepkgdevver=${pkgjsondev##*':'}
             #drop the comma if it has one
             basepkgdevver=${basepkgdevver%%','*}
             devverlist[count]=$basepkgdevver
@@ -578,11 +580,26 @@ getPackageCount(){
 }
 
 convert(){
+    #rm node_modules -R
+    #mkdir node_modules
     parcepkgjson
     makeDepList
     makeDevList
-}
+    count=0
+    for dep in ${deplist[@]}; do
+        #check for version in local node storage
+        #local vrs=$(pickVersion ${dep} ${depverlist[${count}]})
+        pickVersion ${dep} ${depverlist[${count}]}
+        #echo ${count} ${vrs}
+        #echo ${dep}
+        #echo ${verlist[${count}]}
+        let count+=1
+        #if the version exists create sym link else add and then create sym link
 
+    done
+    exit 0
+}
+#currently obsolete
 getLatestLocalVer(){
     local latestLocalVer=0.0.0
     getPackageCount
@@ -682,6 +699,29 @@ setPackageCount(){
     done
 }
 
+pickVersion(){
+
+#echo ${2:0}
+local char1=`expr substr $2 1 2`
+echo $char1
+case $char in
+    '"^')
+    ;;
+    '"~')
+    ;;
+    '">')
+    #test for = as next char
+    ;;
+    '"<')
+    #test for = as next char
+    ;;
+    *)
+    ;;
+esac
+#echo `expr substr $2 2 1`
+#echo $1 $2
+
+}
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input
 case $1 in
@@ -713,8 +753,8 @@ case $1 in
         revertDirs
         exit 0
     ;;
-    'deploy')
-        preDeploy
+    'prepdeploy')
+        prepDeploy
         exit 0
     ;;
     'convert')
@@ -723,7 +763,7 @@ case $1 in
     ;;
     *)
         echo -e ${red}'Invalid First Parameter'${default}
-        echo -e ${green}'Valid First Parameters are: install, configure, update, revert and deploy'${default}
+        echo -e ${green}'Valid First Parameters are: install, configure, convert, update, revert and prepdeploy'${default}
         exit 0
     ;;
 esac

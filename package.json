@@ -1,18 +1,23 @@
 {
-  "name": "handlebars-mvc",
-  "version": "0.0.0",
-  "description": "This is not a great example, it needs some more work!",
-  "main": "controller.js",
-  "dependencies": {
-    "grunt": "~0.4.2"
-  },
-  "devDependencies": {
-    "grunt": "^0.4.2",
-    "grunt-contrib-jshint": "^0.8.0"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC"
+"name": "bashscripts",
+"version": "0.0.0",
+"description": "bash-scripts run by using ./<script name><parameters>",
+"main": "index.js",
+"scripts": {
+"test": "echo \"Error: no test specified\" && exit 1"
+},
+"repository": {
+"type": "git",
+"url": "https://github.com/dcorns/bash_scripts.git"
+},
+"author": "",
+"license": "ISC",
+"bugs": {
+"url": "https://github.com/dcorns/bash_scripts/issues"
+},
+"homepage": "https://github.com/dcorns/bash_scripts",
+"dependencies": {
+/data/Projects/node_modules/socket.io--1.0.6 : 1.0.6,
+/data/Projects/node_modules/express--4.6.1 : 4.6.1
+}
 }

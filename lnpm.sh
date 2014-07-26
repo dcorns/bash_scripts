@@ -229,15 +229,16 @@ makeDevList
 checkpackageDep
 checkpackageDev
 
-if [ $alreadydep = false ]; then
-    echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json dependencies"${default}
-    addpackageDep
-fi
 #if parameter 3 -dev add as a devdependency
 if [ "$devinstall" = "-dev" ]; then
     if [ $alreadydev = false ]; then
         echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json devdependencies"${default}
         addpackageDev
+    fi
+    else
+    if [ $alreadydep = false ]; then
+    echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json dependencies"${default}
+    addpackageDep
     fi
 fi
 echo -e ${green}'Installation complete'${default}
@@ -390,7 +391,7 @@ if [ $havedependencies = true ]; then
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'dependencies')
         if [ "$dep" = 'dependencies' ]; then
-            echo $pkgpath ":" $pkgver"," >> package.njson
+            echo '"'$pkginstall'"':$pkgver"," >> package.njson
         fi
     done
 else
@@ -404,7 +405,7 @@ else
                 echo $pkgline',' >> package.njson #add comma to last object
                 depends='"dependencies"'
                 echo $depends': {' >> package.njson
-                echo $pkgpath ":" $pkgver >> package.njson
+                echo '"'$pkginstall'"':$pkgver >> package.njson
                 echo "}" >> package.njson
             else
                 echo $pkgline >> package.njson
@@ -413,6 +414,7 @@ else
     done
 fi
 writepackagejson
+writelink ${pkginstall} ${pkgver}
 echo -e ${green}$pkginstall $pkgver 'added to package.json dependencies'${default}
 }
 
@@ -429,7 +431,7 @@ if [ $havedevdependencies = true ]; then
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'devDependencies')
         if [ "$dep" = 'devDependencies' ]; then
-            echo $pkgpath ":" $pkgver"," >> package.njson
+            echo '"'$pkginstall'"':$pkgver"," >> package.njson
         fi
     done
 else
@@ -445,7 +447,7 @@ else
             echo $pkgline',' >> package.njson
             depends='"devDependencies"'
             echo $depends': {' >> package.njson
-            echo $pkgpath ":" $pkgver >> package.njson
+            echo '"'$pkgpath'"':$pkgver >> package.njson
             echo "}" >> package.njson
         else
             echo $pkgline >> package.njson
@@ -455,6 +457,7 @@ else
 fi
 #replace package.json with modified
 writepackagejson
+writelink ${pkginstall} ${pkgver}
 echo -e ${green}$pkginstall $pkgver 'added to package.json devdependencies'${default}
 }
 writepackagejson(){
@@ -589,7 +592,7 @@ convert(){
     for dep in ${deplist[@]}; do
         #check for version in local node storage
         #local vrs=$(pickVersion ${dep} ${depverlist[${count}]})
-        pickVersion ${dep} ${depverlist[${count}]}
+        #pickVersion ${dep} ${depverlist[${count}]}
         #echo ${count} ${vrs}
         #echo ${dep}
         #echo ${verlist[${count}]}
@@ -703,24 +706,39 @@ pickVersion(){
 
 #echo ${2:0}
 local char1=`expr substr $2 1 2`
-echo $char1
-case $char in
+local char2=`expr substr $2 3 1`
+#echo $char1
+case $char1 in
     '"^')
+    echo $char1
     ;;
     '"~')
+    echo $char1
     ;;
     '">')
+    echo $char1
     #test for = as next char
+    echo $char2
     ;;
     '"<')
+    echo $char1
     #test for = as next char
+    echo $char2
+    ;;
+    '"*')
+    echo $char1
     ;;
     *)
     ;;
 esac
 #echo `expr substr $2 2 1`
 #echo $1 $2
+}
 
+writelink(){
+# $1 package name $2 package version
+mkdir ${cwd}/node_modules
+ln -s ${nd}/$1"--"$2 ${cwd}/node_modules/$1
 }
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input

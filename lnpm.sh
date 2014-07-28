@@ -230,12 +230,15 @@ checkpackageDep
 checkpackageDev
 
 #if parameter 3 -dev add as a devdependency
-if [ "$devinstall" = "-dev" ]; then
+
+if [ "$devinstall" = "-dev" ] || [ "$devinstall" = "--save-dev" ]; then
     if [ $alreadydev = false ]; then
         echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json devdependencies"${default}
         addpackageDev
     fi
-    else
+fi
+
+if [ "$devinstall" = "-save" ] || [ "$devinstall" = "" ]; then
     if [ $alreadydep = false ]; then
     echo -e ${green}'adding' $pkginstall 'version' $pkgver "to package.json dependencies"${default}
     addpackageDep
@@ -249,6 +252,7 @@ echo -e ${green}'Installation complete'${default}
 check3(){
 case $devinstall in
     '-dev') ;;
+    '--save-dev') ;;
     '') ;;
     *) echo -e ${red}'The third parameter must be -dev or null'${default}
        exit 0
@@ -267,11 +271,10 @@ splitdirnames(){
     vers=${basedirname##*'--'}
     #add values to arrays
     pkglist[$dircount]=$basedir
-    verlist[$dircount]='"'$vers'"'
+    verlist[$dircount]=$vers
     pkgpaths[$dircount]='"'$nd$basedirname'"'
     let dircount=dircount+1
 done
-
 }
 
 setpackage()
@@ -321,8 +324,8 @@ if [ "$pkginstall" != "" ]; then
         fi
     fi
 else
-echo -e ${red}'No package specified for installation'${default}
-exit 0
+echo -e ${yellow}'No package specified for installation. Installing from package.json'${default}
+convert
 fi
 }
 
@@ -391,7 +394,7 @@ if [ $havedependencies = true ]; then
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'dependencies')
         if [ "$dep" = 'dependencies' ]; then
-            echo '"'$pkginstall'"':$pkgver"," >> package.njson
+            echo '"'$pkginstall'"':'"'$pkgver'"'"," >> package.njson
         fi
     done
 else
@@ -405,7 +408,7 @@ else
                 echo $pkgline',' >> package.njson #add comma to last object
                 depends='"dependencies"'
                 echo $depends': {' >> package.njson
-                echo '"'$pkginstall'"':$pkgver >> package.njson
+                echo '"'$pkginstall'"':'"'$pkgver'"' >> package.njson
                 echo "}" >> package.njson
             else
                 echo $pkgline >> package.njson
@@ -431,7 +434,7 @@ if [ $havedevdependencies = true ]; then
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'devDependencies')
         if [ "$dep" = 'devDependencies' ]; then
-            echo '"'$pkginstall'"':$pkgver"," >> package.njson
+            echo '"'$pkginstall'"':'"'$pkgver'"'"," >> package.njson
         fi
     done
 else
@@ -447,7 +450,7 @@ else
             echo $pkgline',' >> package.njson
             depends='"devDependencies"'
             echo $depends': {' >> package.njson
-            echo '"'$pkgpath'"':$pkgver >> package.njson
+            echo '"'$pkginstall'"':'"'$pkgver'"' >> package.njson
             echo "}" >> package.njson
         else
             echo $pkgline >> package.njson
@@ -573,7 +576,8 @@ getPackageCount(){
     pkgidx=0
     pkgcount=0
     for p in ${pkglist[@]}; do
-        if [ ${p} = $pkginstall ]; then
+        if [ ${p} = ${pkginstall} ]; then
+            echo ${p}
             currentpaths[$pkgcount]=${pkgpaths[$pkgidx]}
             currentversions[$pkgcount]=${verlist[$pkgidx]}
             let pkgcount=${pkgcount}+1
@@ -737,7 +741,7 @@ esac
 
 writelink(){
 # $1 package name $2 package version
-mkdir ${cwd}/node_modules
+mkdir ${cwd}/node_modules || continue
 ln -s ${nd}/$1"--"$2 ${cwd}/node_modules/$1
 }
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
@@ -785,7 +789,3 @@ case $1 in
         exit 0
     ;;
 esac
-
-
-
-

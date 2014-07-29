@@ -595,14 +595,18 @@ convert(){
     count=0
     for dep in ${deplist[@]}; do
         #check for version in local node storage
-        #local vrs=$(pickVersion ${dep} ${depverlist[${count}]})
-        #pickVersion ${dep} ${depverlist[${count}]}
-        #echo ${count} ${vrs}
-        #echo ${dep}
-        #echo ${verlist[${count}]}
+        local vrs=$(pickVersion ${dep} ${depverlist[${count}]})
+        echo ${vrs}
         let count+=1
         #if the version exists create sym link else add and then create sym link
-
+    done
+    count=0
+    for dev in ${devlist[@]}; do
+        #check for version in local node storage
+        local devVrs=$(pickVersion ${dev} ${devverlist[${count}]})
+        echo ${devVrs}
+        let count+=1
+        #if the version exists create sym link else add and then create sym link
     done
     exit 0
 }
@@ -707,8 +711,63 @@ setPackageCount(){
 }
 
 pickVersion(){
+#remove quotes from version($2)
+local ln=${#2}
+local verstr=`expr substr $2 1 1`
+local strln=${ln}
+let strln=${strln}-2
+verstr=${2:1:${strln}}
+ln=${#verstr}
 
-#echo ${2:0}
+local notJustNumbers='[~x\*><\^-]'
+local anyvers='[~x\*" "]'
+local anyMajorMatch='[x\*]'
+local anyMinorMatch='[\^~]'
+
+#A length of less than 4 indicates that a full version is not listed
+#A length from 0 to 1 indicates x, *, " " or digit test for digit otherwise any versions
+#A length of 2 is ~d or ^d
+#A length of 3 is d.*, d.x or d.d
+if [ $ln -lt 2 ]; then
+    if [[ $verstr =~ $anyvers ]]; then
+    echo grab latest version
+    exit 0
+    else
+    echo find version starting with $verstr
+    exit 0
+    fi
+fi
+if [ $ln -eq 2 ]; then
+    echo find version starting with `expr substr $verstr 2 1`
+    exit 0
+fi
+if [ $ln -eq 3 ]; then
+    if [[ $verstr =~ $anyMajorMatch ]]; then
+        echo find version starting with `expr substr $verstr 1 1`
+    else
+        echo find version starting with ${verstr}
+    fi
+    exit 0
+fi
+if [ $ln -eq 4 ]; then
+    if [[ $verstr =~ $anyMinorMatch ]]; then
+        echo find version starting with `expr substr $verstr 2 4`
+    else
+        echo find version starting with $verstr
+    fi
+exit 0
+fi
+if [ $ln -gt 4 ]; then
+    if [[ $verstr =~ $notJustNumbers ]]; then
+    #determine which non number vaulues are contained in $2
+    echo notJustNumbers $verstr
+    else
+    #its all numbers, just return ver
+    echo -e ${green}$verstr${default}
+    fi
+exit 0
+fi
+
 local char1=`expr substr $2 1 2`
 local char2=`expr substr $2 3 1`
 #echo $char1
@@ -736,7 +795,7 @@ case $char1 in
     ;;
 esac
 #echo `expr substr $2 2 1`
-#echo $1 $2
+#echo $2
 }
 
 writelink(){

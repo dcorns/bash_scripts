@@ -118,7 +118,7 @@ echo -e ${yellow}'update all chosen: This could take a while. To avoid this incl
                 done
                 if [ ${pkgchecked} != true ]; then
                     pkginstall=${pkg}
-                    updateLocalPackage
+                    updateLocalPackage ${pkg}
                     pkgProccessed[count]=${pkg}
                     let count+=1
                 fi
@@ -145,7 +145,7 @@ echo -e ${yellow}'update all chosen: This could take a while. To avoid this incl
                 exit 0
             fi
         fi
-        updateLocalPackage
+        updateLocalPackage ${pkginstall}
     fi
     echo -e ${green}'Update Complete'${default}
 }
@@ -613,7 +613,7 @@ convert(){
 #currently obsolete
 getLatestLocalVer(){
     local latestLocalVer=0.0.0
-    getPackageCount
+    setPackageCount ${1}
     if [ ${pkgcount} -lt 2 ]; then
         latestLocalVer=${currentversions[0]}
     else
@@ -651,19 +651,19 @@ getLatestLocalVer(){
 
 updateLocalPackage(){
 
-    local rver=$(checkForLatestVer ${pkginstall})
+    local rver=$(checkForLatestVer ${1})
     if [ ${rver} != 0 ]; then
         cd ${nd}
-        npm install ${pkginstall}
+        npm install ${1}
         setupDirs
         dirsSetup=${preparedcount}
             if [ $dirsSetup -gt 0 ]; then
-                echo -e ${green}$pkginstall 'version' ${rver} 'added to local package directory.'${default}
+                echo -e ${green}$1 'version' ${rver} 'added to local package directory.'${default}
             else
-                echo -e ${red}$pkginstall 'version' ${rver} 'was not added to local package directory.'${default}
+                echo -e ${red}$1 'version' ${rver} 'was not added to local package directory.'${default}
             fi
     else
-        echo -e ${yellow}'Latest version of' ${pkginstall} 'already installed locally'${default}
+        echo -e ${yellow}'Latest version of' ${1} 'already installed locally'${default}
     fi
 }
 
@@ -683,11 +683,12 @@ getRemoteLatestVer(){
 }
 
 checkForLatestVer(){
+#if latest version is local return 0 else return version from remote
 local rlv=$(getRemoteLatestVer $1)
-setPackageCount $1
+setPackageCount ${1}
 local result=${rlv}
     for cp in ${currentversions[@]}; do
-        if [ ${cp} = ${rlv} ]; then
+        if [ ${cp} == ${rlv} ]; then
             result=0
         fi
     done
@@ -695,7 +696,7 @@ echo ${result}
 }
 
 setPackageCount(){
-#Checks for versions of pkginstall in the local directory and pkgcount+1 for each version found
+#Checks for versions of $1 in the local directory and pkgcount+1 for each version found
 #If there is a match, it also sets currentpaths and currentversions arrays to match directories found
     splitdirnames
     pkgidx=0
@@ -711,13 +712,18 @@ setPackageCount(){
 }
 
 pickVersion(){
-#remove quotes from version($2)
+#remove quotes from version($2) and package name ($1)
+local result=0
 local ln=${#2}
+local pkln=${#1}
+local apkln=`expr $pkln - 2`
+local pkgin=`expr substr $1 2 $apkln`
 local verstr=`expr substr $2 1 1`
 local strln=${ln}
 let strln=${strln}-2
 verstr=${2:1:${strln}}
 ln=${#verstr}
+pkln=${#pkgin}
 
 local notJustNumbers='[~x\*><\^-]'
 local anyvers='[~x\*" "]'
@@ -731,6 +737,14 @@ local anyMinorMatch='[\^~]'
 if [ $ln -lt 2 ]; then
     if [[ $verstr =~ $anyvers ]]; then
     echo grab latest version
+    local chk=$(checkForLatestVer ${pkgin})
+    if [ ${chk} == 0 ]; then
+        echo use local latest version
+    else
+        updateLocalPackage ${pkgin}
+    fi
+    local iver=$(getLatestLocalVer ${pkgin})
+    echo The latest version is ${iver}
     exit 0
     else
     echo find version starting with $verstr

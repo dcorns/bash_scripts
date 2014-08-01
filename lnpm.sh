@@ -594,7 +594,7 @@ convert(){
     count=0
     for dep in ${deplist[@]}; do
         #check for version in local node storage
-        local vrs=$(parceVersion ${dep} ${depverlist[${count}]})
+        local vrs=$(setVersion ${dep} ${depverlist[${count}]})
         echo ${vrs}
         let count+=1
         #if the version exists create sym link else add and then create sym link
@@ -602,7 +602,7 @@ convert(){
     count=0
     for dev in ${devlist[@]}; do
         #check for version in local node storage
-        local devVrs=$(parceVersion ${dev} ${devverlist[${count}]})
+        local devVrs=$(setVersion ${dev} ${devverlist[${count}]})
         echo ${devVrs}
         let count+=1
         #if the version exists create sym link else add and then create sym link
@@ -855,9 +855,26 @@ pkln=${#pkgin}
 
 #load currentversion array with versions for pkgin
 setPackageCount ${pkgin}
-
+#Prerelease x.x.x-[0-9A-Za-z-].[0-9A-Za-z-].[0-9A-Za-z-] ect. Prerelease always less than release (1.2.4 > 1.2.4-alfa)
+rgx='^[~\^]{0,1}?[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*-'
+if [[ $verstr =~ $rgx ]]; then
+    echo preRelease of ${pkgin}
+    exit 0
+fi
 #Exact version
-local rgx='^[0-9][0-9*\.[0-9][0-9]*\.[0-9][0-9]*$'
+local rgx='^[~]{0,1}?[0-9][0-9*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ $verstr =~ $rgx ]]; then
+    echo Exact version ${verstr} ${pkgin}
+    exit 0
+fi
+#Compatible version x.x.x
+local rgx='^\^[0-9][0-9*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ $verstr =~ $rgx ]]; then
+    echo ${verstr}
+    exit 0
+fi
+#Starts with
+local rgx='~[0-9][0-9*\.[0-9][0-9]*\.[0-9][0-9]*$'
 if [[ $verstr =~ $rgx ]]; then
     echo ${verstr}
     exit 0
@@ -886,6 +903,21 @@ fi
 rgx='^[~\^]{0,1}?[0-9][0-9]*$|^[0-9][0-9]*\.[\*x]{0,1}$'
 if [[ $verstr =~ $rgx ]]; then
     echo Major version requested for ${pkgin} ${verstr}
+    #local edge=`expr substr $verstr 1 1`
+    #if [ $edge = ^ ]; then
+        #echo the ^
+        #exit 0
+    #fi
+    #edge=`expr substr $verstr 1 1`
+    #if [ $edge = ~ ]; then
+        #echo the ~
+        #exit 0
+    #fi
+    #edge=`expr substr $verstr $((${#verstr}-1)) 1`
+    #if [ $edge = x ]; then
+        #echo the x
+        #exit 0
+    #fi
 fi
 #Minor version
 rgx='^[~\^]{0,1}?[0-9][0-9]*\.[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*\.[\*x]{0,1}$'
@@ -912,11 +944,7 @@ rgx='^<=[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
 if [[ $verstr =~ $rgx ]]; then
     echo Less than or equal to version $verstr requested for ${pkgin}
 fi
-#Prerelease x.x.x-[0-9A-Za-z-].[0-9A-Za-z-].[0-9A-Za-z-] ect. Prerelease always less than release (1.2.4 > 1.2.4-alfa)
-rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*-'
-if [[ $verstr =~ $rgx ]]; then
-    echo preRelease of ${pkgin}
-fi
+
 #Build meta-data included x.x.x.x...+ ignore everything after the plus for presidence
 
 #Range [- ||] x.x.x - x.x.x, x.x.x && x.x.x, x.x.x or x.x.x
@@ -925,6 +953,99 @@ fi
 
 #^ Any version compatible with x.x the difference between ~ is that 1.5 will statisfy ^1.1 however ^1 and ~1 are equal since 1 cant become 2 and still satisfy ^
 }
+
+setVersion(){
+local result=0
+local ln=${#2}
+local pkln=${#1}
+local apkln=`expr $pkln - 2`
+local pkgin=`expr substr $1 2 $apkln`
+local verstr=`expr substr $2 1 1`
+local strln=${ln}
+local rgx=''
+local verin=0.0.0
+let strln=${strln}-2
+verstr=${2:1:${strln}}
+ln=${#verstr}
+pkln=${#pkgin}
+
+#load currentversion array with versions for pkgin
+setPackageCount ${pkgin}
+
+#Any version
+rgx='^[x\* ]$'
+if [[ $verstr =~ $rgx ]]; then
+    echo grab latest version
+    local chk=$(checkForLatestVer ${pkgin})
+    if [ ${chk} == 0 ]; then
+        echo use local latest version
+    else
+        updateLocalPackage ${pkgin}
+    fi
+        local iver=$(getLatestLocalVer ${pkgin})
+        echo The latest version is ${iver}
+        exit 0
+fi
+#Exact version
+local rgx='^[~]{0,1}?[0-9][0-9*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ $verstr =~ $rgx ]]; then
+    echo Exact version ${verstr} ${pkgin}
+    exit 0
+fi
+#Compatible ^
+rgx='^\^'
+if [[ ${verstr} =~ $rgx ]]; then
+    verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
+    echo Compatible to ${pkgin} version ${verin}
+    exit 0
+fi
+#Reasonably close ~
+rgx='^~'
+if [[ ${verstr} =~ $rgx ]]; then
+    verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
+    echo Reasonably close to ${pkgin} version ${verin}
+    exit 0
+fi
+#Greater than equal
+rgx='^>='
+if [[ ${verstr} =~ $rgx ]]; then
+    verin=`expr substr ${verstr} 3 $((${#verstr}-2))`
+    echo Greater than equal to ${pkgin} version ${verin}
+    exit 0
+fi
+
+#Less than equal
+rgx='^<='
+if [[ ${verstr} =~ $rgx ]]; then
+    verin=`expr substr ${verstr} 3 $((${#verstr}-2))`
+    echo Less than equal to ${pkgin} version ${verin}
+    exit 0
+fi
+#Less than
+rgx='^<'
+if [[ ${verstr} =~ $rgx ]]; then
+    verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
+    echo Less than ${pkgin} version ${verin}
+    exit 0
+fi
+
+#Greater than
+rgx='^>'
+if [[ ${verstr} =~ $rgx ]]; then
+    verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
+    echo Greater than ${pkgin} version ${verin}
+    exit 0
+fi
+
+#Any sub release
+rgx='[x\*]$'
+if [[ ${verstr} =~ $rgx ]]; then
+    verin=`expr substr ${verstr} 1 $((${#verstr}-2))`
+    echo Sub Release ${pkgin} version ${verin}
+    exit 0
+fi
+}
+
 writelink(){
 # $1 package name $2 package version
 mkdir ${cwd}/node_modules || continue

@@ -1,5 +1,8 @@
 #!/bin/sh
-#Created by Dale Corns codefellow@gmail.com 2014
+#Created by Dale Corns codefellow@gmail.com Copyright (c)2014 Dale Corns
+#https://github.com/dcorns  www.linkedin.com/in/dalecorns/
+#GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
+
 clear
 #*******************************************Variables*******************************************************************
 #set the local node modules directory here
@@ -1044,7 +1047,21 @@ if [[ ${verstr} =~ $rgx ]]; then
     echo Sub Release ${pkgin} version ${verin}
     exit 0
 fi
+
+rgx='^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ ${verstr} =~ $rgx ]]; then
+    echo Sub Release ${pkgin} version ${verstr}
+    exit 0
+fi
+#PreRelease
+rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\-[^\.,][0-9a-zA-Z\.]*$'
+if [[ ${verstr} =~ $rgx ]]; then
+    echo Pre Release ${pkgin} version ${verstr}
+    exit 0
+fi
+
 }
+
 
 writelink(){
 # $1 package name $2 package version

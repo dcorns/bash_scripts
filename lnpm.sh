@@ -229,7 +229,6 @@ makeDevList
 checkpackageDep
 checkpackageDev
 
-#if parameter 3 -dev add as a devdependency
 
 if [ "$devinstall" = "-dev" ] || [ "$devinstall" = "--save-dev" ]; then
     if [ $alreadydev = false ]; then
@@ -595,7 +594,7 @@ convert(){
     count=0
     for dep in ${deplist[@]}; do
         #check for version in local node storage
-        local vrs=$(pickVersion ${dep} ${depverlist[${count}]})
+        local vrs=$(parceVersion ${dep} ${depverlist[${count}]})
         echo ${vrs}
         let count+=1
         #if the version exists create sym link else add and then create sym link
@@ -603,7 +602,7 @@ convert(){
     count=0
     for dev in ${devlist[@]}; do
         #check for version in local node storage
-        local devVrs=$(pickVersion ${dev} ${devverlist[${count}]})
+        local devVrs=$(parceVersion ${dev} ${devverlist[${count}]})
         echo ${devVrs}
         let count+=1
         #if the version exists create sym link else add and then create sym link
@@ -729,35 +728,65 @@ local notJustNumbers='[~x\*><\^-]'
 local anyvers='[~x\*" "]'
 local anyMajorMatch='[x\*]'
 local anyMinorMatch='[\^~]'
+local rgx=''
+
+setPackageCount ${pkgin}
 
 #A length of less than 4 indicates that a full version is not listed
 #A length from 0 to 1 indicates x, *, " " or digit test for digit otherwise any versions
-#A length of 2 is ~d or ^d
-#A length of 3 is d.*, d.x or d.d
+#A length of 2 is ~d or ^d or dd
+#A length of 3 is d.*, d.x, d.d or ^dd or ~dd
 if [ $ln -lt 2 ]; then
     if [[ $verstr =~ $anyvers ]]; then
-    echo grab latest version
-    local chk=$(checkForLatestVer ${pkgin})
-    if [ ${chk} == 0 ]; then
-        echo use local latest version
+        echo grab latest version
+        local chk=$(checkForLatestVer ${pkgin})
+        if [ ${chk} == 0 ]; then
+            echo use local latest version
+        else
+            updateLocalPackage ${pkgin}
+        fi
+        local iver=$(getLatestLocalVer ${pkgin})
+        echo The latest version is ${iver}
+        exit 0
     else
-        updateLocalPackage ${pkgin}
-    fi
-    local iver=$(getLatestLocalVer ${pkgin})
-    echo The latest version is ${iver}
-    exit 0
-    else
-    echo find version starting with $verstr
-    exit 0
+        #single digit
+        echo get major versions starting with ${verstr}
+        rgx='^'${verstr}
+        for pc in ${currentversions[@]}; do
+            if [[ ${pc} =~ $rgx ]]; then
+                echo ${pc}
+            fi
+        done
+        exit 0
     fi
 fi
 if [ $ln -eq 2 ]; then
-    echo find version starting with `expr substr $verstr 2 1`
-    exit 0
+    rgx='^[0-9][0-9]$'
+    if [[ $verstr =~ $rgx ]]; then
+        echo find ${pkgin} version starting with ${verstr}
+        rgx='^'${verstr}
+        for pc1 in ${currentversions[@]}; do
+            if [[ ${pc1} =~ $rgx ]]; then
+                echo ${pc1}
+            fi
+        done
+        exit 0
+    else
+        local m1=`expr substr $verstr 2 1`
+        echo find ${pkgin} version starting with ${m1}
+        rgx='^'${m1}
+        for pc in ${currentversions[@]}; do
+            if [[ ${pc} =~ $rgx ]]; then
+                echo ${pc}
+            fi
+        done
+        exit 0
+    fi
 fi
 if [ $ln -eq 3 ]; then
-    if [[ $verstr =~ $anyMajorMatch ]]; then
-        echo find version starting with `expr substr $verstr 1 1`
+    rgx='[\*x]$'
+    if [[ $verstr =~ $rgx ]]; then
+        echo find 3 length version ${pkgin} starting with `expr substr $verstr 1 1`
     else
         echo find version starting with ${verstr}
     fi
@@ -811,7 +840,91 @@ esac
 #echo `expr substr $2 2 1`
 #echo $2
 }
+parceVersion(){
+local result=0
+local ln=${#2}
+local pkln=${#1}
+local apkln=`expr $pkln - 2`
+local pkgin=`expr substr $1 2 $apkln`
+local verstr=`expr substr $2 1 1`
+local strln=${ln}
+let strln=${strln}-2
+verstr=${2:1:${strln}}
+ln=${#verstr}
+pkln=${#pkgin}
 
+#load currentversion array with versions for pkgin
+setPackageCount ${pkgin}
+
+#Exact version
+local rgx='^[0-9][0-9*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ $verstr =~ $rgx ]]; then
+    echo ${verstr}
+    exit 0
+fi
+#Compatible 0.x.x version unstable exact version required
+local rgx='^\^0\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ $verstr =~ $rgx ]]; then
+    echo `expr substr $verstr 2 $((${#verstr}-1))`
+    exit 0
+fi
+#Any version
+rgx='^[x\* ]$'
+if [[ $verstr =~ $rgx ]]; then
+    echo grab latest version
+    local chk=$(checkForLatestVer ${pkgin})
+    if [ ${chk} == 0 ]; then
+        echo use local latest version
+    else
+        updateLocalPackage ${pkgin}
+    fi
+        local iver=$(getLatestLocalVer ${pkgin})
+        echo The latest version is ${iver}
+        exit 0
+fi
+#Major version
+rgx='^[~\^]{0,1}?[0-9][0-9]*$|^[0-9][0-9]*\.[\*x]{0,1}$'
+if [[ $verstr =~ $rgx ]]; then
+    echo Major version requested for ${pkgin} ${verstr}
+fi
+#Minor version
+rgx='^[~\^]{0,1}?[0-9][0-9]*\.[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*\.[\*x]{0,1}$'
+if [[ $verstr =~ $rgx ]]; then
+    echo Minor version requested for ${pkgin}
+fi
+#Greater than specific version
+rgx='^>[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ $verstr =~ $rgx ]]; then
+    echo Greater than version $verstr requested for ${pkgin}
+fi
+#Less than specific version
+rgx='^<[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ $verstr =~ $rgx ]]; then
+    echo Less than version $verstr requested for ${pkgin}
+fi
+#Greater than or equal to specific version
+rgx='^>=[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ $verstr =~ $rgx ]]; then
+    echo Greater than or equal to version $verstr requested for ${pkgin}
+fi
+#Less than or equal to a specific version
+rgx='^<=[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ $verstr =~ $rgx ]]; then
+    echo Less than or equal to version $verstr requested for ${pkgin}
+fi
+#Prerelease x.x.x-[0-9A-Za-z-].[0-9A-Za-z-].[0-9A-Za-z-] ect. Prerelease always less than release (1.2.4 > 1.2.4-alfa)
+rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*-'
+if [[ $verstr =~ $rgx ]]; then
+    echo preRelease of ${pkgin}
+fi
+#Build meta-data included x.x.x.x...+ ignore everything after the plus for presidence
+
+#Range [- ||] x.x.x - x.x.x, x.x.x && x.x.x, x.x.x or x.x.x
+
+#~ Any version starting with x
+
+#^ Any version compatible with x.x the difference between ~ is that 1.5 will statisfy ^1.1 however ^1 and ~1 are equal since 1 cant become 2 and still satisfy ^
+}
 writelink(){
 # $1 package name $2 package version
 mkdir ${cwd}/node_modules || continue

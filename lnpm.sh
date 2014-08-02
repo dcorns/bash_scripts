@@ -967,6 +967,7 @@ local verstr=`expr substr $2 1 1`
 local strln=${ln}
 local rgx=''
 local verin=0.0.0
+local vpiece=0
 let strln=${strln}-2
 verstr=${2:1:${strln}}
 ln=${#verstr}
@@ -990,7 +991,7 @@ if [[ $verstr =~ $rgx ]]; then
         exit 0
 fi
 #Exact version
-local rgx='^[~]{0,1}?[0-9][0-9*\.[0-9][0-9]*\.[0-9][0-9]*$'
+local rgx='^[~]{0,1}?[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
 if [[ $verstr =~ $rgx ]]; then
     echo Exact version ${verstr} ${pkgin}
     exit 0
@@ -999,7 +1000,14 @@ fi
 rgx='^\^'
 if [[ ${verstr} =~ $rgx ]]; then
     verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
-    echo Compatible to ${pkgin} version ${verin}
+    ln=${#verin}
+    for pc in ${currentversions[@]}; do
+        local testver=`expr substr ${pc} 1 $((${#verin}))`
+        if [ ${testver} = ${verin} ]; then
+        echo ${pc}
+        fi
+    done
+    echo Compatible to ${pkgin} version ${verin} ${ln}
     exit 0
 fi
 #Reasonably close ~

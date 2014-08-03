@@ -1103,14 +1103,58 @@ if [[ ${verstr} =~ $rgx ]]; then
     fi
 echo ${verin}
 exit 0
-
 fi
 #Greater than equal
 rgx='^>='
 if [[ ${verstr} =~ $rgx ]]; then
-    verin=`expr substr ${verstr} 3 $((${#verstr}-2))`
-    echo Greater than equal to ${pkgin} version ${verin}
-    exit 0
+#Remove >=
+verin=`expr substr ${verstr} 3 $((${#verstr}-2))`
+#get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+
+echo ${verstr}
+exit 0
 fi
 
 #Less than equal
@@ -1231,7 +1275,7 @@ else
 fi
 }
 
-getMajorGreatest(){
+getMajorGreatestOrEqual(){
 local vpiece=""
 local test=""
 local v1=0
@@ -1246,27 +1290,30 @@ for pc in ${currentversions[@]}; do
     v1=${pc%%'.'*}
     v2=${vpiece%%'.'*}
     v3=${pc##*'.'}
-    if [ ${v1out} -eq ${v1} ]  && [ ${v1out} -ne 0 ]; then
-        if [ ${v2} -gt ${v2out} ]; then
-            v2out=${v2}
-            v3out=${v3}
-            localVerFound=true
-        else
-            if [ ${v2} -eq ${v2out} ]; then
-                if [ ${v3} -gt ${v3out} ]; then
-                    v3out=${v3}
-                    localVerFound=true
+    if [ ${v1} -gt ${v1out} ]; then
+        v1out=${v1}
+        v2out=${v2}
+        v3out=${v3}
+        localVerFound=true
+    else
+        if [ ${v1} -eq ${v1out} ]; then
+            if [ ${v2} -gt ${v2out} ]; then
+                v2out=${v2}
+                v3out=${v3}
+                localVerFound=true
+            else
+                if [ ${v2} -eq ${v2out} ]; then
+                    if [ ${v3} -gt ${v3out} ]; then
+                        v3out=${v3}
+                        localVerFound=true
+                    else
+                        if [ ${v3} -eq ${v3out} ]; then
+                        localVerFound=true
+                        fi
+                    fi
                 fi
             fi
         fi
-    else
-        if [ ${v2out} -eq ${v2} ] && [ ${v2out} -ne 0 ]; then
-            if [ ${v3} -ge ${v3out} ]; then
-                    v3out=${v3}
-                    localVerFound=true
-            fi
-        fi
-
     fi
 done
 if [ ${localVerFound} = true ]; then

@@ -1364,6 +1364,53 @@ else
 fi
 }
 
+getMajorLesstOrEqual(){
+local vpiece=""
+local test=""
+local v1=0
+local v2=0
+local v3=0
+local v1out=$1
+local v2out=$2
+local v3out=$3
+local localVerFound=false
+for pc in ${currentversions[@]}; do
+    vpiece=$(removeFirstDot ${pc})
+    v1=${pc%%'.'*}
+    v2=${vpiece%%'.'*}
+    v3=${pc##*'.'}
+    if [ ${v1} -eq ${v1out} ]; then
+        localVerFound=true
+        v1out=${v1}
+    else
+        if [ ${v1} -lt ${v1out} ]; then
+            if [ ${v2} -gt ${v2out} ]; then
+                v2out=${v2}
+                v3out=${v3}
+                localVerFound=true
+            else
+                if [ ${v2} -eq ${v2out} ]; then
+                    if [ ${v3} -gt ${v3out} ]; then
+                        v3out=${v3}
+                        localVerFound=true
+                    else
+                        if [ ${v3} -eq ${v3out} ]; then
+                        localVerFound=true
+                        fi
+                    fi
+                fi
+            fi
+        fi
+    fi
+done
+if [ ${localVerFound} = true ]; then
+    echo ${v1out}.${v2out}.${v3out}
+else
+    echo -1.-1.-1
+fi
+}
+
+
 writelink(){
 # $1 package name $2 package version
 mkdir ${cwd}/node_modules || continue

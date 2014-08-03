@@ -958,7 +958,7 @@ fi
 }
 
 setVersion(){
-local result=0
+local result=""
 local ln=${#2}
 local pkln=${#1}
 local apkln=`expr $pkln - 2`
@@ -968,6 +968,14 @@ local strln=${ln}
 local rgx=''
 local verin=0.0.0
 local vpiece=0
+local dots=""
+local ndots=0
+local testver=""
+local greatestN=0
+local v1=0
+local v2=0
+local v3=0
+
 let strln=${strln}-2
 verstr=${2:1:${strln}}
 ln=${#verstr}
@@ -978,44 +986,124 @@ setPackageCount ${pkgin}
 
 #Any version
 rgx='^[x\* ]$'
-if [[ $verstr =~ $rgx ]]; then
-    echo grab latest version
+if [[ ${verstr} =~ $rgx ]]; then
+    #check if latest version is already local and if not update it
     local chk=$(checkForLatestVer ${pkgin})
-    if [ ${chk} == 0 ]; then
-        echo use local latest version
-    else
+    if [ ${chk} != 0 ]; then
         updateLocalPackage ${pkgin}
     fi
-        local iver=$(getLatestLocalVer ${pkgin})
-        echo The latest version is ${iver}
-        exit 0
+    local iver=$(getLatestLocalVer ${pkgin})
+    echo ${iver}
+    exit 0
 fi
 #Exact version
-local rgx='^[~]{0,1}?[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
-if [[ $verstr =~ $rgx ]]; then
-    echo Exact version ${verstr} ${pkgin}
+local rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ ${verstr} =~ $rgx ]]; then
+    echo ${verstr}
     exit 0
 fi
 #Compatible ^
 rgx='^\^'
 if [[ ${verstr} =~ $rgx ]]; then
+    #drop the ^
     verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
-    ln=${#verin}
-    for pc in ${currentversions[@]}; do
-        local testver=`expr substr ${pc} 1 $((${#verin}))`
-        if [ ${testver} = ${verin} ]; then
-        echo ${pc}
+    #get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getGreatest ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
         fi
-    done
-    echo Compatible to ${pkgin} version ${verin} ${ln}
-    exit 0
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getGreatest ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getGreatest ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+echo ${verstr}
+exit 0
 fi
 #Reasonably close ~
 rgx='^~'
 if [[ ${verstr} =~ $rgx ]]; then
+    #drop the ~
     verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
-    echo Reasonably close to ${pkgin} version ${verin}
-    exit 0
+    #get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getGreatest ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getGreatest ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getGreatest ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+echo ${verin}
+exit 0
+
 fi
 #Greater than equal
 rgx='^>='
@@ -1069,7 +1157,124 @@ if [[ ${verstr} =~ $rgx ]]; then
 fi
 
 }
+extractMajor(){
+local result=`expr substr $1 1 1`
+echo ${result}
+exit 0
+if [ ${result} = "." ] || [ ${#result} -lt 1 ]; then
+    exit 0
+else
+    echo ${result}
+    extractMajor `expr substr ${1} 2 $((${#1}-1))`
+fi
+}
 
+removeFirstDot(){
+local ln=${#1}
+local count=1
+local test=""
+while [ ${count} -lt ${ln} ]; do
+    test=`expr substr ${1} ${count} 1`
+
+    if [ ${test} = "." ]; then
+        echo `expr substr ${1} $((${count}+1)) $((${#1}-${count}))`
+        exit 0
+    else
+        let count+=1
+    fi
+done
+}
+#take in a number Major, Minor, and Patch numbers and return the that each number or a greater number if found in local
+#else return one or more -1's
+getGreatest(){
+local vpiece=""
+local test=""
+local v1=0
+local v2=0
+local v3=0
+local v1out=$1
+local v2out=$2
+local v3out=$3
+local localVerFound=false
+for pc in ${currentversions[@]}; do
+    vpiece=$(removeFirstDot ${pc})
+    v1=${pc%%'.'*}
+    v2=${vpiece%%'.'*}
+    v3=${pc##*'.'}
+    if [ ${v1out} -eq ${v1} ]  && [ ${v1out} -ne 0 ]; then
+        if [ ${v2} -gt ${v2out} ]; then
+            v2out=${v2}
+            v3out=${v3}
+            localVerFound=true
+        else
+            if [ ${v2} -eq ${v2out} ]; then
+                if [ ${v3} -gt ${v3out} ]; then
+                    v3out=${v3}
+                    localVerFound=true
+                fi
+            fi
+        fi
+    else
+        if [ ${v2out} -eq ${v2} ] && [ ${v2out} -ne 0 ]; then
+            if [ ${v3} -ge ${v3out} ]; then
+                    v3out=${v3}
+                    localVerFound=true
+            fi
+        fi
+
+    fi
+done
+if [ ${localVerFound} = true ]; then
+    echo ${v1out}.${v2out}.${v3out}
+else
+    echo -1.-1.-1
+fi
+}
+
+getMajorGreatest(){
+local vpiece=""
+local test=""
+local v1=0
+local v2=0
+local v3=0
+local v1out=$1
+local v2out=$2
+local v3out=$3
+local localVerFound=false
+for pc in ${currentversions[@]}; do
+    vpiece=$(removeFirstDot ${pc})
+    v1=${pc%%'.'*}
+    v2=${vpiece%%'.'*}
+    v3=${pc##*'.'}
+    if [ ${v1out} -eq ${v1} ]  && [ ${v1out} -ne 0 ]; then
+        if [ ${v2} -gt ${v2out} ]; then
+            v2out=${v2}
+            v3out=${v3}
+            localVerFound=true
+        else
+            if [ ${v2} -eq ${v2out} ]; then
+                if [ ${v3} -gt ${v3out} ]; then
+                    v3out=${v3}
+                    localVerFound=true
+                fi
+            fi
+        fi
+    else
+        if [ ${v2out} -eq ${v2} ] && [ ${v2out} -ne 0 ]; then
+            if [ ${v3} -ge ${v3out} ]; then
+                    v3out=${v3}
+                    localVerFound=true
+            fi
+        fi
+
+    fi
+done
+if [ ${localVerFound} = true ]; then
+    echo ${v1out}.${v2out}.${v3out}
+else
+    echo -1.-1.-1
+fi
+}
 
 writelink(){
 # $1 package name $2 package version

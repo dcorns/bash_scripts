@@ -1176,8 +1176,49 @@ fi
 rgx='^>'
 if [[ ${verstr} =~ $rgx ]]; then
     verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
-    echo Greater than ${pkgin} version ${verin}
-    exit 0
+    #get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+    fi
+    if [ ${testver} = ${verin} ]; then
+        echo ${verstr}
+    else
+        echo ${testver}
+    fi
+exit 0
 fi
 
 #Any sub release

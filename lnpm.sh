@@ -1160,16 +1160,104 @@ fi
 #Less than equal
 rgx='^<='
 if [[ ${verstr} =~ $rgx ]]; then
+    #remove <=
     verin=`expr substr ${verstr} 3 $((${#verstr}-2))`
-    echo Less than equal to ${pkgin} version ${verin}
-    exit 0
+#get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getLessOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getLessOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getLessOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+echo ${verstr}
+exit 0
 fi
 #Less than
 rgx='^<'
 if [[ ${verstr} =~ $rgx ]]; then
+    #remove <
     verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
-    echo Less than ${pkgin} version ${verin}
-    exit 0
+    #get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getLess ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getLess ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getLess ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${verstr}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+echo ${verstr}
+exit 0
 fi
 
 #Greater than
@@ -1221,19 +1309,20 @@ if [[ ${verstr} =~ $rgx ]]; then
 exit 0
 fi
 
-#Any sub release
-rgx='[x\*]$'
+#Any sub release d.x, d.*, d.d.x, d.d.*, d, d.d
+#rgx='[x\*]$'
+rgx='[x\*]$|^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
 if [[ ${verstr} =~ $rgx ]]; then
     verin=`expr substr ${verstr} 1 $((${#verstr}-2))`
     echo Sub Release ${pkgin} version ${verin}
     exit 0
 fi
 
-rgx='^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
-if [[ ${verstr} =~ $rgx ]]; then
-    echo Sub Release ${pkgin} version ${verstr}
-    exit 0
-fi
+#rgx='^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
+#if [[ ${verstr} =~ $rgx ]]; then
+    #echo Sub Release ${pkgin} version ${verstr}
+    #exit 0
+#fi
 #PreRelease
 rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\-[^\.,][0-9a-zA-Z\.]*$'
 if [[ ${verstr} =~ $rgx ]]; then
@@ -1363,39 +1452,52 @@ else
     echo -1.-1.-1
 fi
 }
-
-getMajorLesstOrEqual(){
+#Returns first version that is less than or equal input if local
+getLessOrEqual(){
 local vpiece=""
-local test=""
 local v1=0
 local v2=0
 local v3=0
 local v1out=$1
 local v2out=$2
 local v3out=$3
-local localVerFound=false
 for pc in ${currentversions[@]}; do
     vpiece=$(removeFirstDot ${pc})
     v1=${pc%%'.'*}
     v2=${vpiece%%'.'*}
     v3=${pc##*'.'}
-    if [ ${v1} -eq ${v1out} ]; then
-        localVerFound=true
+    if [ ${v1} -lt ${v1out} ]; then
         v1out=${v1}
+        v2out=${v2}
+        v3out=${v3}
+        echo ${v1out}.${v2out}.${v3out}
+        exit 0
     else
-        if [ ${v1} -lt ${v1out} ]; then
-            if [ ${v2} -gt ${v2out} ]; then
+        if [ ${v1} -eq ${v1out} ]; then
+            if [ ${v2} -lt ${v2out} ]; then
+                v1out=${v1}
                 v2out=${v2}
                 v3out=${v3}
-                localVerFound=true
+                echo ${v1out}.${v2out}.${v3out}
+                exit 0
             else
                 if [ ${v2} -eq ${v2out} ]; then
-                    if [ ${v3} -gt ${v3out} ]; then
+                    if [ ${v3} -lt ${v3out} ]; then
+                        v1out=${v1}
+                        v2out=${v2}
                         v3out=${v3}
-                        localVerFound=true
+                        echo ${v1out}.${v2out}.${v3out}
+                        exit 0
                     else
-                        if [ ${v3} -eq ${v3out} ]; then
-                        localVerFound=true
+                        if [ ${v3} -eq ${v2out} ]; then
+                            v1out=${v1}
+                            v2out=${v2}
+                            v3out=${v3}
+                            echo ${v1out}.${v2out}.${v3out}
+                            exit 0
+                        else
+                            echo -1.-1.-1
+                            exit 0
                         fi
                     fi
                 fi
@@ -1403,11 +1505,56 @@ for pc in ${currentversions[@]}; do
         fi
     fi
 done
-if [ ${localVerFound} = true ]; then
-    echo ${v1out}.${v2out}.${v3out}
-else
-    echo -1.-1.-1
-fi
+echo -1.-1.-1
+
+}
+#Return return version less than input if local
+getLess(){
+local vpiece=""
+local v1=0
+local v2=0
+local v3=0
+local v1out=$1
+local v2out=$2
+local v3out=$3
+for pc in ${currentversions[@]}; do
+    vpiece=$(removeFirstDot ${pc})
+    v1=${pc%%'.'*}
+    v2=${vpiece%%'.'*}
+    v3=${pc##*'.'}
+    if [ ${v1} -lt ${v1out} ]; then
+        v1out=${v1}
+        v2out=${v2}
+        v3out=${v3}
+        echo ${v1out}.${v2out}.${v3out}
+        exit 0
+    else
+        if [ ${v1} -eq ${v1out} ]; then
+            if [ ${v2} -lt ${v2out} ]; then
+                v1out=${v1}
+                v2out=${v2}
+                v3out=${v3}
+                echo ${v1out}.${v2out}.${v3out}
+                exit 0
+            else
+                if [ ${v2} -eq ${v2out} ]; then
+                    if [ ${v3} -lt ${v3out} ]; then
+                        v1out=${v1}
+                        v2out=${v2}
+                        v3out=${v3}
+                        echo ${v1out}.${v2out}.${v3out}
+                        exit 0
+                    else
+                        echo -1.-1.-1
+                        exit 0
+                    fi
+                fi
+            fi
+        fi
+    fi
+done
+echo -1.-1.-1
+
 }
 
 

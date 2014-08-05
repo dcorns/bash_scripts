@@ -1309,27 +1309,30 @@ if [[ ${verstr} =~ $rgx ]]; then
 exit 0
 fi
 
-#Any sub release d.x, d.*, d.d.x, d.d.*, d, d.d
-#rgx='[x\*]$'
-rgx='[x\*]$|^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
+#Any sub release d.x, d.*
+rgx='[x\*]$'
 if [[ ${verstr} =~ $rgx ]]; then
+    #remove x or * and .
     verin=`expr substr ${verstr} 1 $((${#verstr}-2))`
-    echo Sub Release ${pkgin} version ${verin}
+    echo $(getStartsWith ${verin})
     exit 0
 fi
 
-#rgx='^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
-#if [[ ${verstr} =~ $rgx ]]; then
-    #echo Sub Release ${pkgin} version ${verstr}
-    #exit 0
-#fi
-#PreRelease
+#Any sub release d d.d
+rgx='^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ ${verstr} =~ $rgx ]]; then
+     echo $(getStartsWith ${verstr})
+    exit 0
+fi
+#PreRelease -... All pre-release versions return themselves only
 rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\-[^\.,][0-9a-zA-Z\.]*$'
 if [[ ${verstr} =~ $rgx ]]; then
-    echo Pre Release ${pkgin} version ${verstr}
+    echo ${verstr}
     exit 0
 fi
-
+#Build Number +... Included All that include a build number return themselves only
+echo ${verstr}
+exit 0
 }
 extractMajor(){
 local result=`expr substr $1 1 1`
@@ -1557,6 +1560,87 @@ echo -1.-1.-1
 
 }
 
+getStartsWith(){
+#get major release d
+local vin=$1
+local testv=0
+local vpiece=0
+local v1=-1
+local v2=-1
+local v3=-1
+    rgx='^[0-9][0-9]*$'
+    if [[ ${vin} =~ $rgx ]]; then
+        v1=${vin}
+        testv=$(getSubRelease ${v1} ${v2} ${v3})
+        v3=${testv##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testv=${vin}
+        fi
+        echo ${testv}
+        exit 0
+    fi
+    #get major release and minor release d.d
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${vin} =~ $rgx ]]; then
+        v1=${vin%%'.'*}
+        v2=${vin##*'.'}
+        testv=$(getSubRelease ${v1} ${v2} ${v3})
+        v3=${testv##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testv=${vin}
+        fi
+        echo ${testv}
+        exit 0
+    fi
+    #get major release and minor release and patch release d.d.d
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${vin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${vin})
+        v1=${vin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${vin##*'.'}
+        testv=$(getSubRelease ${v1} ${v2} ${v3})
+        v3=${testv##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testv=${vin}
+        fi
+        echo ${testv}
+        exit 0
+    fi
+echo ${vin}
+exit 0
+}
+
+getSubRelease(){
+local vpiece=""
+local v1=0
+local v2=0
+local v3=0
+local v1out=$1
+local v2out=$2
+local v3out=$3
+for pc in ${currentversions[@]}; do
+    vpiece=$(removeFirstDot ${pc})
+    v1=${pc%%'.'*}
+    v2=${vpiece%%'.'*}
+    v3=${pc##*'.'}
+    if [ ${v1} -eq ${v1out} ]; then
+        v1out=${v1}
+        if [ ${v2} -eq ${v2out} ] || [ ${v2out} -eq -1 ]; then
+                v1out=${v1}
+                v2out=${v2}
+                if [ ${v3} -eq ${v3out} ] || [ ${v3out} -eq -1 ]; then
+                        v1out=${v1}
+                        v2out=${v2}
+                        v3out=${v3}
+                        echo ${v1out}.${v2out}.${v3out}
+                        exit 0
+                fi
+        fi
+    fi
+done
+echo -1.-1.-1
+}
 
 writelink(){
 # $1 package name $2 package version

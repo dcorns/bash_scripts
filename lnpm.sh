@@ -261,7 +261,7 @@ case $devinstall in
        ;;
 esac
 }
-
+#Extract package names versions and paths from local package directory
 splitdirnames(){
     dircount=0
     for path in $nd*; do
@@ -396,7 +396,7 @@ if [ $havedependencies = true ]; then
         echo $pkgline >> package.njson
         dep=$(echo $pkgline | grep -o 'dependencies')
         if [ "$dep" = 'dependencies' ]; then
-            echo '"'$pkginstall'"':'"'$pkgver'"'"," >> package.njson
+            echo '"'$pkginstall'"': '"'$pkgver'"'"," >> package.njson
         fi
     done
 else
@@ -410,7 +410,7 @@ else
                 echo $pkgline',' >> package.njson #add comma to last object
                 depends='"dependencies"'
                 echo $depends': {' >> package.njson
-                echo '"'$pkginstall'"':'"'$pkgver'"' >> package.njson
+                echo '"'$pkginstall'"': '"'$pkgver'"' >> package.njson
                 echo "}" >> package.njson
             else
                 echo $pkgline >> package.njson
@@ -594,21 +594,33 @@ convert(){
     parcepkgjson
     makeDepList
     makeDevList
-    count=0
+    local count=0
+    local vrs=0
+    local devVrs=0
     for dep in ${deplist[@]}; do
         #check for version in local node storage
-        local vrs=$(setVersion ${dep} ${depverlist[${count}]})
-        echo ${vrs}
+        vrs=$(setVersion ${dep} ${depverlist[${count}]})
+        #if the version exists create sym link
+        if [ ${#vrs} -lt 2 ]; then
+            echo -e ${red}"Invalid dependency setting in package.json:" ${dep} ${depverlist[${count}]}${default}
+        else
+            writelink ${dep} ${vrs}
+            echo -e ${green}"Converted" ${dep} ${vrs}${default}
+        fi
         let count+=1
-        #if the version exists create sym link else add and then create sym link
     done
     count=0
     for dev in ${devlist[@]}; do
         #check for version in local node storage
-        local devVrs=$(setVersion ${dev} ${devverlist[${count}]})
-        echo ${devVrs}
+        devVrs=$(setVersion ${dev} ${devverlist[${count}]})
+        #if the version exists create sym link
+        if [ ${#devVrs} -lt 2 ]; then
+            echo -e ${red}"Invalid dev dependency setting in package.json:" ${dev} ${depverlist[${count}]}${default}
+        else
+            writelink ${dev} ${vrs}
+            echo -e ${green}"Converted " ${dev} ${vrs}${default}
+        fi
         let count+=1
-        #if the version exists create sym link else add and then create sym link
     done
     exit 0
 }
@@ -675,6 +687,8 @@ writeRemoteView(){
 
 getRemoteLatestVer(){
     writeRemoteView $1
+    echo WremoteView ${1}
+    exit 0
     local rvers=$(grep "version:" ${nd}remoteView.tmp)
     #extract from version field to retrieve version number
     local rvers=${rvers#*:} #remove most everything left of the colon
@@ -686,12 +700,15 @@ getRemoteLatestVer(){
 
 checkForLatestVer(){
 #if latest version is local return 0 else return version from remote
+echo checkLatV ${1}
+exit 0
 local rlv=$(getRemoteLatestVer $1)
 setPackageCount ${1}
 local result=${rlv}
     for cp in ${currentversions[@]}; do
         if [ ${cp} == ${rlv} ]; then
-            result=0
+            echo=0
+            exit 0
         fi
     done
 echo ${result}
@@ -731,364 +748,163 @@ local greatestN=0
 local v1=0
 local v2=0
 local v3=0
+local versionLocal=0
 
-let strln=${strln}-2
+#let strln=${strln}-2
 verstr=${2:1:${strln}}
 ln=${#verstr}
 pkln=${#pkgin}
-
 #load currentversion array with versions for pkgin
 setPackageCount ${pkgin}
 
 #Any version
-rgx='^[x\* ]$'
+rgx='^[x \*]$'
 if [[ ${verstr} =~ $rgx ]]; then
-    #check if latest version is already local and if not update it
-    local chk=$(checkForLatestVer ${pkgin})
-    if [ ${chk} != 0 ]; then
-        updateLocalPackage ${pkgin}
-    fi
-    local iver=$(getLatestLocalVer ${pkgin})
-    echo ${iver}
+    echo ${2} Any Vers
+    result=$(anyVersion ${pkgin} ${verstr})
     exit 0
+    versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} -eq 1 ]; then
+        echo ${result}
+        exit 0
+    else
+        echo -
+    fi
 fi
 #Exact version
 local rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
 if [[ ${verstr} =~ $rgx ]]; then
-    echo ${verstr}
+    result=$(exactVersion ${pkgin} ${verstr})
+    versionLocal=$(isLocal ${pkgin} ${result})
+    echo ${versionLocal}
+    if [ ${versionLocal} -eq 1 ]; then
+        echo ${result}
+        exit 0
+    else
+        echo -
+        exit 0
+    fi
     exit 0
 fi
 #Compatible ^
 rgx='^\^'
 if [[ ${verstr} =~ $rgx ]]; then
-    #drop the ^
-    verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
-    #get major release x
-    rgx='^[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin}
-        v2=-1
-        v3=-1
-        testver=$(getGreatest ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
+result=$(compatibleVersion ${pkgin} ${verstr})
+versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} = true ]; then
+        echo ${result}
+        exit 0
+    else
+        echo -
         exit 0
     fi
-    #get major release and minor release x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin%%'.'*}
-        v2=${verin##*'.'}
-        v3=-1
-        testver=$(getGreatest ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-    #get major release and minor release and patch release x.x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        vpiece=$(removeFirstDot ${verin})
-        v1=${verin%%'.'*}
-        v2=${vpiece%%'.'*}
-        v3=${verin##*'.'}
-        testver=$(getGreatest ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-echo ${verstr}
-exit 0
 fi
 #Reasonably close ~
 rgx='^~'
 if [[ ${verstr} =~ $rgx ]]; then
-    #drop the ~
-    verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
-    #get major release x
-    rgx='^[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin}
-        v2=-1
-        v3=-1
-        testver=$(getGreatest ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
+result=$(reasonablyClose ${pkgin} ${verstr})
+versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} = true ]; then
+        echo ${result}
+        exit 0
+    else
+        echo -
         exit 0
     fi
-    #get major release and minor release x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin%%'.'*}
-        v2=${verin##*'.'}
-        v3=-1
-        testver=$(getGreatest ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-    #get major release and minor release and patch release x.x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        vpiece=$(removeFirstDot ${verin})
-        v1=${verin%%'.'*}
-        v2=${vpiece%%'.'*}
-        v3=${verin##*'.'}
-        testver=$(getGreatest ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-echo ${verin}
-exit 0
 fi
 #Greater than equal
 rgx='^>='
 if [[ ${verstr} =~ $rgx ]]; then
-#Remove >=
-verin=`expr substr ${verstr} 3 $((${#verstr}-2))`
-#get major release x
-    rgx='^[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin}
-        v2=-1
-        v3=-1
-        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
+result=$(greaterThanEqual ${pkgin} ${verstr})
+versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} = true ]; then
+        echo ${result}
+        exit 0
+    else
+        echo -
         exit 0
     fi
-    #get major release and minor release x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin%%'.'*}
-        v2=${verin##*'.'}
-        v3=-1
-        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-    #get major release and minor release and patch release x.x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        vpiece=$(removeFirstDot ${verin})
-        v1=${verin%%'.'*}
-        v2=${vpiece%%'.'*}
-        v3=${verin##*'.'}
-        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-
-echo ${verstr}
-exit 0
 fi
-
 #Less than equal
 rgx='^<='
 if [[ ${verstr} =~ $rgx ]]; then
-    #remove <=
-    verin=`expr substr ${verstr} 3 $((${#verstr}-2))`
-#get major release x
-    rgx='^[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin}
-        v2=-1
-        v3=-1
-        testver=$(getLessOrEqual ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
+result=$(lessThanEqual ${pkgin} ${verstr})
+versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} = true ]; then
+        echo ${result}
+        exit 0
+    else
+        echo -
         exit 0
     fi
-    #get major release and minor release x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin%%'.'*}
-        v2=${verin##*'.'}
-        v3=-1
-        testver=$(getLessOrEqual ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-    #get major release and minor release and patch release x.x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        vpiece=$(removeFirstDot ${verin})
-        v1=${verin%%'.'*}
-        v2=${vpiece%%'.'*}
-        v3=${verin##*'.'}
-        testver=$(getLessOrEqual ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-echo ${verstr}
-exit 0
 fi
 #Less than
 rgx='^<'
 if [[ ${verstr} =~ $rgx ]]; then
-    #remove <
-    verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
-    #get major release x
-    rgx='^[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin}
-        v2=-1
-        v3=-1
-        testver=$(getLess ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
+result=$(lessThanVersion ${pkgin} ${verstr})
+versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} = true ]; then
+        echo ${result}
+        exit 0
+    else
+        echo -
         exit 0
     fi
-    #get major release and minor release x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin%%'.'*}
-        v2=${verin##*'.'}
-        v3=-1
-        testver=$(getLess ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-    #get major release and minor release and patch release x.x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        vpiece=$(removeFirstDot ${verin})
-        v1=${verin%%'.'*}
-        v2=${vpiece%%'.'*}
-        v3=${verin##*'.'}
-        testver=$(getLess ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-        echo ${testver}
-        exit 0
-    fi
-echo ${verstr}
-exit 0
 fi
-
 #Greater than
 rgx='^>'
 if [[ ${verstr} =~ $rgx ]]; then
-    verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
-    #get major release x
-    rgx='^[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin}
-        v2=-1
-        v3=-1
-        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-    fi
-    #get major release and minor release x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        v1=${verin%%'.'*}
-        v2=${verin##*'.'}
-        v3=-1
-        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-    fi
-    #get major release and minor release and patch release x.x.x
-    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
-    if [[ ${verin} =~ $rgx ]]; then
-        vpiece=$(removeFirstDot ${verin})
-        v1=${verin%%'.'*}
-        v2=${vpiece%%'.'*}
-        v3=${verin##*'.'}
-        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
-        v3=${testver##*'.'}
-        if [ ${v3} -eq -1 ]; then
-            testver=${verstr}
-        fi
-    fi
-    if [ ${testver} = ${verin} ]; then
-        echo ${verstr}
+result=$(greaterThanVersion ${pkgin} ${verstr})
+versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} = true ]; then
+        echo ${result}
+        exit 0
     else
-        echo ${testver}
+        echo -
+        exit 0
     fi
-exit 0
 fi
-
 #Any sub release d.x, d.*
-rgx='[x\*]$'
+rgx='[0-9]*\.[x\*]$'
 if [[ ${verstr} =~ $rgx ]]; then
-    #remove x or * and .
-    verin=`expr substr ${verstr} 1 $((${#verstr}-2))`
-    echo $(getStartsWith ${verin})
-    exit 0
+result=$(anySubVersionX ${pkgin} ${verstr})
+versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} = true ]; then
+        echo ${result}
+        exit 0
+    else
+        echo -
+        exit 0
+    fi
 fi
-
 #Any sub release d d.d
 rgx='^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
 if [[ ${verstr} =~ $rgx ]]; then
-     echo $(getStartsWith ${verstr})
-    exit 0
+result=$(anyVersionD ${pkgin} ${verstr})
+versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} = true ]; then
+        echo ${result}
+        exit 0
+    else
+        echo -
+        exit 0
+    fi
 fi
 #PreRelease -... All pre-release versions return themselves only
 rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\-[^\.,][0-9a-zA-Z\.]*$'
 if [[ ${verstr} =~ $rgx ]]; then
-    echo ${verstr}
-    exit 0
+    result=$(preReleaseVersion ${pkgin} ${verstr})
+    versionLocal=$(isLocal ${pkgin} ${result})
+    if [ ${versionLocal} = true ]; then
+        echo ${result}
+        exit 0
+        else
+        echo -
+        exit 0
+    fi
 fi
 #Build Number +... Included All that include a build number return themselves only
-echo ${verstr}
-exit 0
+
 }
 extractMajor(){
 local result=`expr substr $1 1 1`
@@ -1398,10 +1214,401 @@ done
 echo -1.-1.-1
 }
 
+anyVersion(){
+#check if latest version is already local and if not update it
+local pkg=$1
+echo anyV ${pkg}
+exit 0
+local chk=$(checkForLatestVer ${pkg})
+if [ ${chk} != 0 ]; then
+    updateLocalPackage ${2}
+fi
+local iver=$(getLatestLocalVer ${2})
+echo ${iver}
+}
+
+exactVersion(){
+local pkg=$1
+local ver=2$
+echo ${2}
+}
+
+compatibleVersion(){
+local pkg=$1
+#drop the ^
+local verin=`expr substr ${2} 2 $((${#2}-1))`
+#get major release x
+local rgx='^[0-9][0-9]*$'
+local v1=-1
+local v2=-1
+local v3=-1
+local testver=""
+if [[ ${verin} =~ $rgx ]]; then
+    v1=${verin}
+    v2=-1
+    v3=-1
+    testver=$(getGreatest ${v1} ${v2} ${v3})
+    v3=${testver##*'.'}
+    if [ ${v3} -eq -1 ]; then
+        testver=${2}
+    fi
+    echo ${testver}
+    exit 0
+fi
+#get major release and minor release x.x
+rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ ${verin} =~ $rgx ]]; then
+    v1=${verin%%'.'*}
+    v2=${verin##*'.'}
+    v3=-1
+    testver=$(getGreatest ${v1} ${v2} ${v3})
+    v3=${testver##*'.'}
+    if [ ${v3} -eq -1 ]; then
+        testver=${2}
+    fi
+echo ${testver}
+exit 0
+fi
+#get major release and minor release and patch release x.x.x
+rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ ${verin} =~ $rgx ]]; then
+    vpiece=$(removeFirstDot ${verin})
+    v1=${verin%%'.'*}
+    v2=${vpiece%%'.'*}
+    v3=${verin##*'.'}
+    testver=$(getGreatest ${v1} ${v2} ${v3})
+    v3=${testver##*'.'}
+    if [ ${v3} -eq -1 ]; then
+        testver=${2}
+    fi
+echo ${testver}
+exit 0
+fi
+echo ${2}
+exit 0
+}
+
+reasonablyClose(){
+local pkg=$1
+#drop the ~
+local verin=`expr substr ${2} 2 $((${#2}-1))`
+    #get major release x
+local rgx='^[0-9][0-9]*$'
+local v1=-1
+local v2=-1
+local v3=-1
+local testver=""
+if [[ ${verin} =~ $rgx ]]; then
+    v1=${verin}
+    v2=-1
+    v3=-1
+    testver=$(getGreatest ${v1} ${v2} ${v3})
+    v3=${testver##*'.'}
+    if [ ${v3} -eq -1 ]; then
+        testver=${2}
+    fi
+echo ${testver}
+exit 0
+fi
+#get major release and minor release x.x
+rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ ${verin} =~ $rgx ]]; then
+    v1=${verin%%'.'*}
+    v2=${verin##*'.'}
+    v3=-1
+    testver=$(getGreatest ${v1} ${v2} ${v3})
+    v3=${testver##*'.'}
+    if [ ${v3} -eq -1 ]; then
+        testver=${2}
+    fi
+echo ${testver}
+exit 0
+fi
+#get major release and minor release and patch release x.x.x
+rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+if [[ ${verin} =~ $rgx ]]; then
+    vpiece=$(removeFirstDot ${verin})
+    v1=${verin%%'.'*}
+    v2=${vpiece%%'.'*}
+    v3=${verin##*'.'}
+    testver=$(getGreatest ${v1} ${v2} ${v3})
+    v3=${testver##*'.'}
+    if [ ${v3} -eq -1 ]; then
+        testver=${2}
+    fi
+echo ${testver}
+exit 0
+fi
+echo ${verin}
+exit 0
+}
+
+greaterThanEqual(){
+pkg=${1}
+#Remove >=
+local verin=`expr substr ${2} 3 $((${#2}-2))`
+local v1=-1
+local v2=-1
+local v3=-1
+local testver=-1
+#get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+echo ${2}
+exit 0
+}
+
+lessThanEqual(){
+local pkg=$1
+local v1=-1
+local v2=-1
+local v3=-1
+local testver=-1
+#remove <=
+local verin=`expr substr ${2} 3 $((${#2}-2))`
+#get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getLessOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getLessOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getLessOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+echo ${2}
+exit 0
+}
+
+lessThanVersion(){
+local pkg=$1
+local v1=-1
+local v2=-1
+local v3=-1
+local testver=-1
+#remove <
+local verin=`expr substr ${2} 2 $((${#2}-1))`
+    #get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getLess ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getLess ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getLess ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+        echo ${testver}
+        exit 0
+    fi
+echo ${2}
+exit 0
+}
+
+greaterThanVersion(){
+local pkg=$1
+local v1=-1
+local v2=-1
+local v3=-1
+local testver=-1
+#remove >
+local verin=`expr substr ${2} 2 $((${#2}-1))`
+    #get major release x
+    rgx='^[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin}
+        v2=-1
+        v3=-1
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+    fi
+    #get major release and minor release x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        v1=${verin%%'.'*}
+        v2=${verin##*'.'}
+        v3=-1
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+    fi
+    #get major release and minor release and patch release x.x.x
+    rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
+    if [[ ${verin} =~ $rgx ]]; then
+        vpiece=$(removeFirstDot ${verin})
+        v1=${verin%%'.'*}
+        v2=${vpiece%%'.'*}
+        v3=${verin##*'.'}
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        v3=${testver##*'.'}
+        if [ ${v3} -eq -1 ]; then
+            testver=${2}
+        fi
+    fi
+    if [ ${testver} = ${verin} ]; then
+        echo ${2}
+    else
+        echo ${testver}
+    fi
+exit 0
+}
+
+anySubVersionX(){
+local pkg=$1
+#remove x or * and .
+local verin=`expr substr ${2} 1 $((${#2}-2))`
+    echo $(getStartsWith ${verin})
+    exit 0
+}
+
+anySubVersionD(){
+local pkg=$1
+local verin=$2
+echo $(getStartsWith ${verin})
+exit 0
+}
+
+preReleaseVersion(){
+local pkg=$1
+echo ${2}
+exit 0
+}
+
 writelink(){
 # $1 package name $2 package version
-mkdir ${cwd}/node_modules || continue
-ln -s ${nd}/$1"--"$2 ${cwd}/node_modules/$1
+local nmd=$(find ${cwd}/node_modules -maxdepth 0 )
+if [ "${nmd}" != "${cwd}/node_modules" ]; then
+    echo -e ${green}Creating package sl folder${default}
+    mkdir ${cwd}/node_modules
+fi
+local nsl=$(find ${cwd}/node_modules/$1 -maxdepth 0)
+if [ "${nsl}" != "${cwd}/node_modules/${1}" ]; then
+    echo -e ${green}Creating symbolic link for ${1}${default}
+    ln -s ${nd}/$1"--"$2 ${cwd}/node_modules/$1
+fi
+}
+
+isLocal(){
+splitdirnames
+local count=0
+for pk in ${pkglist[@]}; do
+    if [ ${pk} = ${1} ]; then
+        if [ ${verlist[${count}]} = ${2} ]; then
+            echo 1
+            exit 0
+        fi
+    fi
+    let count+=1
+done
+echo 0
 }
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input

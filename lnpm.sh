@@ -597,6 +597,7 @@ convert(){
     local count=0
     local vrs=0
     local devVrs=0
+
     for dep in ${deplist[@]}; do
         #check for version in local node storage
         vrs=$(setVersion ${dep} ${depverlist[${count}]})
@@ -604,8 +605,11 @@ convert(){
         if [ ${#vrs} -lt 2 ]; then
             echo -e ${red}"Invalid dependency setting in package.json:" ${dep} ${depverlist[${count}]}${default}
         else
-            writelink ${dep} ${vrs}
-            echo -e ${green}"Converted" ${dep} ${vrs}${default}
+            local pkln=${#dep}
+            local apkln=`expr $pkln - 2`
+            local pkgin=`expr substr ${dep} 2 $apkln`
+            writelink ${pkgin} ${vrs}
+            echo -e ${green}"Converted" ${pkgin} ${vrs}${default}
         fi
         let count+=1
     done
@@ -617,8 +621,11 @@ convert(){
         if [ ${#devVrs} -lt 2 ]; then
             echo -e ${red}"Invalid dev dependency setting in package.json:" ${dev} ${depverlist[${count}]}${default}
         else
-            writelink ${dev} ${vrs}
-            echo -e ${green}"Converted " ${dev} ${vrs}${default}
+            local pkvln=${#dev}
+            local apkvln=`expr $pkvln - 2`
+            local pkgvin=`expr substr ${dev} 2 $apkvln`
+            writelink ${pkgvin} ${devVrs}
+            echo -e ${green}"Converted " ${pkgvin} ${devVrs}${default}
         fi
         let count+=1
     done
@@ -664,21 +671,20 @@ getLatestLocalVer(){
 }
 
 updateLocalPackage(){
-
-    local rver=$(checkForLatestVer ${1})
-    if [ ${rver} != 0 ]; then
-        cd ${nd}
-        npm install ${1}
-        setupDirs
-        dirsSetup=${preparedcount}
-            if [ $dirsSetup -gt 0 ]; then
-                echo -e ${green}$1 'version' ${rver} 'added to local package directory.'${default}
-            else
-                echo -e ${red}$1 'version' ${rver} 'was not added to local package directory.'${default}
-            fi
+local rver=$(checkForLatestVer ${1})
+if [ ${rver} != 0 ]; then
+    cd ${nd}
+    npm install ${1}
+    setupDirs
+    dirsSetup=${preparedcount}
+    if [ $dirsSetup -gt 0 ]; then
+        echo -e ${green}$1 'version' ${rver} 'added to local package directory.'${default}
     else
-        echo -e ${yellow}'Latest version of' ${1} 'already installed locally'${default}
+        echo -e ${red}$1 'version' ${rver} 'was not added to local package directory.'${default}
     fi
+else
+    echo -e ${yellow}'Latest version of' ${1} 'already installed locally'${default}
+fi
 }
 
 writeRemoteView(){
@@ -687,8 +693,6 @@ writeRemoteView(){
 
 getRemoteLatestVer(){
     writeRemoteView $1
-    echo WremoteView ${1}
-    exit 0
     local rvers=$(grep "version:" ${nd}remoteView.tmp)
     #extract from version field to retrieve version number
     local rvers=${rvers#*:} #remove most everything left of the colon
@@ -700,15 +704,12 @@ getRemoteLatestVer(){
 
 checkForLatestVer(){
 #if latest version is local return 0 else return version from remote
-echo checkLatV ${1}
-exit 0
 local rlv=$(getRemoteLatestVer $1)
 setPackageCount ${1}
 local result=${rlv}
     for cp in ${currentversions[@]}; do
         if [ ${cp} == ${rlv} ]; then
-            echo=0
-            exit 0
+            result=0
         fi
     done
 echo ${result}
@@ -750,7 +751,7 @@ local v2=0
 local v3=0
 local versionLocal=0
 
-#let strln=${strln}-2
+let strln=${strln}-2
 verstr=${2:1:${strln}}
 ln=${#verstr}
 pkln=${#pkgin}
@@ -760,9 +761,7 @@ setPackageCount ${pkgin}
 #Any version
 rgx='^[x \*]$'
 if [[ ${verstr} =~ $rgx ]]; then
-    echo ${2} Any Vers
-    result=$(anyVersion ${pkgin} ${verstr})
-    exit 0
+    result=$(anyVersion ${pkgin})
     versionLocal=$(isLocal ${pkgin} ${result})
     if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
@@ -776,7 +775,6 @@ local rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$'
 if [[ ${verstr} =~ $rgx ]]; then
     result=$(exactVersion ${pkgin} ${verstr})
     versionLocal=$(isLocal ${pkgin} ${result})
-    echo ${versionLocal}
     if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
@@ -1217,20 +1215,22 @@ echo -1.-1.-1
 anyVersion(){
 #check if latest version is already local and if not update it
 local pkg=$1
-echo anyV ${pkg}
-exit 0
-local chk=$(checkForLatestVer ${pkg})
-if [ ${chk} != 0 ]; then
-    updateLocalPackage ${2}
-fi
-local iver=$(getLatestLocalVer ${2})
+local blockechowiththis=$(updateLocalPackage ${pkg})
+local iver=$(getLatestLocalVer ${pkg})
 echo ${iver}
 }
 
 exactVersion(){
 local pkg=$1
-local ver=2$
-echo ${2}
+local ver=$2
+local loc=$(isLocal ${pkg} ${ver})
+if [ ${loc} -lt 1 ]; then
+    cd ${nd}
+    npm install ${pkg}@${ver}
+    setupDirs
+    cd ${cwd}
+fi
+echo ${ver}
 }
 
 compatibleVersion(){
@@ -1586,7 +1586,7 @@ writelink(){
 # $1 package name $2 package version
 local nmd=$(find ${cwd}/node_modules -maxdepth 0 )
 if [ "${nmd}" != "${cwd}/node_modules" ]; then
-    echo -e ${green}Creating package sl folder${default}
+    echo -e ${green}Creating project symbolic link folder${default}
     mkdir ${cwd}/node_modules
 fi
 local nsl=$(find ${cwd}/node_modules/$1 -maxdepth 0)
@@ -1599,9 +1599,11 @@ fi
 isLocal(){
 splitdirnames
 local count=0
+local pkg=$1
+local ver=$2
 for pk in ${pkglist[@]}; do
-    if [ ${pk} = ${1} ]; then
-        if [ ${verlist[${count}]} = ${2} ]; then
+    if [ ${pk} = ${pkg} ]; then
+        if [ ${verlist[${count}]} = ${ver} ]; then
             echo 1
             exit 0
         fi

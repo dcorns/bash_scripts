@@ -789,7 +789,6 @@ rgx='^\^'
 if [[ ${verstr} =~ $rgx ]]; then
 result=$(compatibleVersion ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
-
     if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
@@ -803,7 +802,7 @@ rgx='^~'
 if [[ ${verstr} =~ $rgx ]]; then
 result=$(reasonablyClose ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
-    if [ ${versionLocal} = true ]; then
+    if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
     else
@@ -816,7 +815,7 @@ rgx='^>='
 if [[ ${verstr} =~ $rgx ]]; then
 result=$(greaterThanEqual ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
-    if [ ${versionLocal} = true ]; then
+    if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
     else
@@ -829,7 +828,7 @@ rgx='^<='
 if [[ ${verstr} =~ $rgx ]]; then
 result=$(lessThanEqual ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
-    if [ ${versionLocal} = true ]; then
+    if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
     else
@@ -842,7 +841,7 @@ rgx='^<'
 if [[ ${verstr} =~ $rgx ]]; then
 result=$(lessThanVersion ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
-    if [ ${versionLocal} = true ]; then
+    if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
     else
@@ -855,7 +854,7 @@ rgx='^>'
 if [[ ${verstr} =~ $rgx ]]; then
 result=$(greaterThanVersion ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
-    if [ ${versionLocal} = true ]; then
+    if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
     else
@@ -868,7 +867,7 @@ rgx='[0-9]*\.[x\*]$'
 if [[ ${verstr} =~ $rgx ]]; then
 result=$(anySubVersionX ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
-    if [ ${versionLocal} = true ]; then
+    if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
     else
@@ -881,7 +880,7 @@ rgx='^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
 if [[ ${verstr} =~ $rgx ]]; then
 result=$(anyVersionD ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
-    if [ ${versionLocal} = true ]; then
+    if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
     else
@@ -894,7 +893,7 @@ rgx='^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\-[^\.,][0-9a-zA-Z\.]*$'
 if [[ ${verstr} =~ $rgx ]]; then
     result=$(preReleaseVersion ${pkgin} ${verstr})
     versionLocal=$(isLocal ${pkgin} ${result})
-    if [ ${versionLocal} = true ]; then
+    if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
         else
@@ -1292,22 +1291,22 @@ fi
 
 reasonablyClose(){
 local pkg=$1
-#drop the ~
-local verin=`expr substr ${2} 2 $((${#2}-1))`
-    #get major release x
-local rgx='^[0-9][0-9]*$'
+local verstr=$2
 local v1=-1
 local v2=-1
 local v3=-1
+#drop the ~
+local verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
+    #get major release x
+local rgx='^[0-9][0-9]*$'
 local testver=""
 if [[ ${verin} =~ $rgx ]]; then
     v1=${verin}
-    v2=-1
-    v3=-1
-    testver=$(getGreatest ${v1} ${v2} ${v3})
+    testver=$(getSubRelease ${v1} ${v2} ${v3} )
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
-        testver=${2}
+        remoteInstall ${pkg} ${verstr}
+        testver=$(getSubRelease ${v1} ${v2} ${v3} )
     fi
 echo ${testver}
 exit 0
@@ -1318,7 +1317,7 @@ if [[ ${verin} =~ $rgx ]]; then
     v1=${verin%%'.'*}
     v2=${verin##*'.'}
     v3=-1
-    testver=$(getGreatest ${v1} ${v2} ${v3})
+    testver=$(getStartsWith ${v1} ${v2} ${v3})
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
         testver=${2}
@@ -1333,7 +1332,7 @@ if [[ ${verin} =~ $rgx ]]; then
     v1=${verin%%'.'*}
     v2=${vpiece%%'.'*}
     v3=${verin##*'.'}
-    testver=$(getGreatest ${v1} ${v2} ${v3})
+    testver=$(getStartsWith ${v1} ${v2} ${v3})
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
         testver=${2}

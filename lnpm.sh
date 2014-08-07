@@ -789,7 +789,8 @@ rgx='^\^'
 if [[ ${verstr} =~ $rgx ]]; then
 result=$(compatibleVersion ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
-    if [ ${versionLocal} = true ]; then
+
+    if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
         exit 0
     else
@@ -922,7 +923,6 @@ local count=1
 local test=""
 while [ ${count} -lt ${ln} ]; do
     test=`expr substr ${1} ${count} 1`
-
     if [ ${test} = "." ]; then
         echo `expr substr ${1} $((${count}+1)) $((${#1}-${count}))`
         exit 0
@@ -1235,6 +1235,7 @@ echo ${ver}
 
 compatibleVersion(){
 local pkg=$1
+local ver=$2
 #drop the ^
 local verin=`expr substr ${2} 2 $((${#2}-1))`
 #get major release x
@@ -1250,7 +1251,8 @@ if [[ ${verin} =~ $rgx ]]; then
     testver=$(getGreatest ${v1} ${v2} ${v3})
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
-        testver=${2}
+        remoteInstall ${pkg} ${ver}
+        testver=$(getGreatest ${v1} ${v2} ${v3})
     fi
     echo ${testver}
     exit 0
@@ -1264,7 +1266,8 @@ if [[ ${verin} =~ $rgx ]]; then
     testver=$(getGreatest ${v1} ${v2} ${v3})
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
-        testver=${2}
+        remoteInstall ${pkg} ${ver}
+        testver=$(getGreatest ${v1} ${v2} ${v3})
     fi
 echo ${testver}
 exit 0
@@ -1279,13 +1282,12 @@ if [[ ${verin} =~ $rgx ]]; then
     testver=$(getGreatest ${v1} ${v2} ${v3})
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
-        testver=${2}
+        remoteInstall ${pkg} ${ver}
+        testver=$(getGreatest ${v1} ${v2} ${v3})
     fi
 echo ${testver}
 exit 0
 fi
-echo ${2}
-exit 0
 }
 
 reasonablyClose(){
@@ -1612,6 +1614,30 @@ for pk in ${pkglist[@]}; do
 done
 echo 0
 }
+
+remoteInstall(){
+local pkg=$1
+local ver=$2
+cd ${nd}
+npm install ${pkg}@${ver}
+setupDirs
+cd ${cwd}
+}
+
+setNodeDir(){
+local nmd=$(find ${pkginstall} -maxdepth 0 )
+if [ "${nmd}" != "${pkginstall}" ]; then
+    mkdir ${pkginstall}
+fi
+nmd=$(find ${pkginstall} -maxdepth 0 )
+if [ "${nmd}" = "${pkginstall}" ]; then
+    echo export LNPMDIR=${pkginstall} >> ~/.bashrc
+    echo -e ${green}lnpm local directory set successfully${default}
+else
+    echo -e ${red}lnpm local directory set FAILED${default}
+fi
+}
+
 #/////////////////////////////////////////////////SCRIPT START//////////////////////////////////////////////////////////
 #validate input
 case $1 in
@@ -1649,6 +1675,10 @@ case $1 in
     ;;
     'convert')
         convert
+        exit 0
+    ;;
+    'setNodedir')
+        setNodeDir
         exit 0
     ;;
     *)

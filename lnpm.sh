@@ -2,6 +2,7 @@
 #Created by Dale Corns codefellow@gmail.com Copyright (c)2014 Dale Corns
 #https://github.com/dcorns  www.linkedin.com/in/dalecorns/
 #GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007
+#Please report any bugs https://github.com/dcorns/bash_scripts/issues
 
 clear
 #*******************************************Variables*******************************************************************
@@ -589,8 +590,6 @@ getPackageCount(){
 }
 
 convert(){
-    #rm node_modules -R
-    #mkdir node_modules
     parcepkgjson
     makeDepList
     makeDevList
@@ -1696,6 +1695,13 @@ case $1 in
         exit 0
     ;;
     'convert')
+        echo -e ${yellow}'Enter yes to continue'${default}
+        read
+        if [ "$REPLY" != 'yes' ]; then
+            exit 0
+        fi
+        rm node_modules -R
+        mkdir node_modules
         convert
         exit 0
     ;;

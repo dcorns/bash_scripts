@@ -619,7 +619,7 @@ convert(){
         devVrs=$(setVersion ${dev} ${devverlist[${count}]})
         #if the version exists create sym link
         if [ ${#devVrs} -lt 2 ]; then
-            echo -e ${red}"Invalid dev dependency setting in package.json:" ${dev} ${depverlist[${count}]}${default}
+            echo -e ${red}"Invalid dev dependency setting in package.json:" ${dev} ${devverlist[${count}]}${default}
         else
             local pkvln=${#dev}
             local apkvln=`expr $pkvln - 2`
@@ -878,7 +878,7 @@ fi
 #Any sub release d d.d
 rgx='^[0-9][0-9]*$|^[0-9][0-9]*\.[0-9][0-9]*$'
 if [[ ${verstr} =~ $rgx ]]; then
-result=$(anyVersionD ${pkgin} ${verstr})
+result=$(anySubVersionD ${pkgin} ${verstr})
 versionLocal=$(isLocal ${pkgin} ${result})
     if [ ${versionLocal} -eq 1 ]; then
         echo ${result}
@@ -903,17 +903,6 @@ if [[ ${verstr} =~ $rgx ]]; then
 fi
 #Build Number +... Included All that include a build number return themselves only
 
-}
-extractMajor(){
-local result=`expr substr $1 1 1`
-echo ${result}
-exit 0
-if [ ${result} = "." ] || [ ${#result} -lt 1 ]; then
-    exit 0
-else
-    echo ${result}
-    extractMajor `expr substr ${1} 2 $((${#1}-1))`
-fi
 }
 
 removeFirstDot(){
@@ -947,11 +936,17 @@ for pc in ${currentversions[@]}; do
     v1=${pc%%'.'*}
     v2=${vpiece%%'.'*}
     v3=${pc##*'.'}
-    if [ ${v1out} -eq ${v1} ]  && [ ${v1out} -ne 0 ]; then
-        if [ ${v2} -gt ${v2out} ]; then
-            v2out=${v2}
-            v3out=${v3}
-            localVerFound=true
+    if [ ${v1} -gt ${v1out} ]; then
+        v1out=${v1}
+        v2out=${v2}
+        v3out=${v3}
+        localVerFound=true
+    else
+        if [ ${v1out} -eq ${v1} ]; then
+            if [ ${v2} -gt ${v2out} ]; then
+                v2out=${v2}
+                v3out=${v3}
+                localVerFound=true
         else
             if [ ${v2} -eq ${v2out} ]; then
                 if [ ${v3} -gt ${v3out} ]; then
@@ -960,14 +955,15 @@ for pc in ${currentversions[@]}; do
                 fi
             fi
         fi
-    else
-        if [ ${v2out} -eq ${v2} ] && [ ${v2out} -ne 0 ]; then
-            if [ ${v3} -ge ${v3out} ]; then
+        else
+            if [ ${v2out} -eq ${v2} ] && [ ${v2out} -ne 0 ]; then
+                if [ ${v3} -ge ${v3out} ]; then
                     v3out=${v3}
                     localVerFound=true
+                fi
             fi
-        fi
 
+        fi
     fi
 done
 if [ ${localVerFound} = true ]; then
@@ -1061,7 +1057,7 @@ for pc in ${currentversions[@]}; do
                         echo ${v1out}.${v2out}.${v3out}
                         exit 0
                     else
-                        if [ ${v3} -eq ${v2out} ]; then
+                        if [ ${v3} -eq ${v3out} ]; then
                             v1out=${v1}
                             v2out=${v2}
                             v3out=${v3}
@@ -1132,6 +1128,7 @@ echo -1.-1.-1
 getStartsWith(){
 #get major release d
 local vin=$1
+local verstr=$2
 local testv=0
 local vpiece=0
 local v1=-1
@@ -1143,7 +1140,8 @@ local v3=-1
         testv=$(getSubRelease ${v1} ${v2} ${v3})
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testv=${vin}
+            remoteInstall ${pkg} ${verstr}
+            testver=$(getSubRelease ${v1} ${v2} ${v3} )
         fi
         echo ${testv}
         exit 0
@@ -1156,7 +1154,8 @@ local v3=-1
         testv=$(getSubRelease ${v1} ${v2} ${v3})
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testv=${vin}
+            remoteInstall ${pkg} ${verstr}
+            testver=$(getSubRelease ${v1} ${v2} ${v3} )
         fi
         echo ${testv}
         exit 0
@@ -1171,12 +1170,13 @@ local v3=-1
         testv=$(getSubRelease ${v1} ${v2} ${v3})
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testv=${vin}
+            remoteInstall ${pkg} ${verstr}
+            testver=$(getSubRelease ${v1} ${v2} ${v3} )
         fi
         echo ${testv}
         exit 0
     fi
-echo ${vin}
+echo ${verstr}
 exit 0
 }
 
@@ -1317,10 +1317,11 @@ if [[ ${verin} =~ $rgx ]]; then
     v1=${verin%%'.'*}
     v2=${verin##*'.'}
     v3=-1
-    testver=$(getStartsWith ${v1} ${v2} ${v3})
+    testver=$(getSubRelease ${v1} ${v2} ${v3} )
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
-        testver=${2}
+        remoteInstall ${pkg} ${verstr}
+        testver=$(getSubRelease ${v1} ${v2} ${v3} )
     fi
 echo ${testver}
 exit 0
@@ -1332,10 +1333,11 @@ if [[ ${verin} =~ $rgx ]]; then
     v1=${verin%%'.'*}
     v2=${vpiece%%'.'*}
     v3=${verin##*'.'}
-    testver=$(getStartsWith ${v1} ${v2} ${v3})
+    testver=$(getSubRelease ${v1} ${v2} ${v3} )
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
-        testver=${2}
+        remoteInstall ${pkg} ${verstr}
+        testver=$(getSubRelease ${v1} ${v2} ${v3} )
     fi
 echo ${testver}
 exit 0
@@ -1345,7 +1347,8 @@ exit 0
 }
 
 greaterThanEqual(){
-pkg=${1}
+local pkg=${1}
+local verstr=${2}
 #Remove >=
 local verin=`expr substr ${2} 3 $((${#2}-2))`
 local v1=-1
@@ -1361,7 +1364,8 @@ local testver=-1
         testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+        remoteInstall ${pkg} ${verstr}
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3} )
         fi
         echo ${testver}
         exit 0
@@ -1375,7 +1379,8 @@ local testver=-1
         testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+        remoteInstall ${pkg} ${verstr}
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3} )
         fi
         echo ${testver}
         exit 0
@@ -1390,7 +1395,8 @@ local testver=-1
         testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+        remoteInstall ${pkg} ${verstr}
+        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3} )
         fi
         echo ${testver}
         exit 0
@@ -1401,6 +1407,7 @@ exit 0
 
 lessThanEqual(){
 local pkg=$1
+local verstr=$2
 local v1=-1
 local v2=-1
 local v3=-1
@@ -1416,7 +1423,8 @@ local verin=`expr substr ${2} 3 $((${#2}-2))`
         testver=$(getLessOrEqual ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+        remoteInstall ${pkg} ${verstr}
+        testver=$(getLessOrEqual ${v1} ${v2} ${v3} )
         fi
         echo ${testver}
         exit 0
@@ -1430,7 +1438,8 @@ local verin=`expr substr ${2} 3 $((${#2}-2))`
         testver=$(getLessOrEqual ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+        remoteInstall ${pkg} ${verstr}
+        testver=$(getLessOrEqual ${v1} ${v2} ${v3} )
         fi
         echo ${testver}
         exit 0
@@ -1445,7 +1454,8 @@ local verin=`expr substr ${2} 3 $((${#2}-2))`
         testver=$(getLessOrEqual ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+        remoteInstall ${pkg} ${verstr}
+        testver=$(getLessOrEqual ${v1} ${v2} ${v3} )
         fi
         echo ${testver}
         exit 0
@@ -1456,12 +1466,13 @@ exit 0
 
 lessThanVersion(){
 local pkg=$1
+local verstr=$2
 local v1=-1
 local v2=-1
 local v3=-1
 local testver=-1
 #remove <
-local verin=`expr substr ${2} 2 $((${#2}-1))`
+local verin=`expr substr ${verstr} 2 $((${#verstr}-1))`
     #get major release x
     rgx='^[0-9][0-9]*$'
     if [[ ${verin} =~ $rgx ]]; then
@@ -1471,7 +1482,8 @@ local verin=`expr substr ${2} 2 $((${#2}-1))`
         testver=$(getLess ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+            remoteInstall ${pkg} ${verstr}
+            testver=$(getLess ${v1} ${v2} ${v3} )
         fi
         echo ${testver}
         exit 0
@@ -1485,7 +1497,8 @@ local verin=`expr substr ${2} 2 $((${#2}-1))`
         testver=$(getLess ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+            remoteInstall ${pkg} ${verstr}
+            testver=$(getLess ${v1} ${v2} ${v3} )
         fi
         echo ${testver}
         exit 0
@@ -1500,7 +1513,8 @@ local verin=`expr substr ${2} 2 $((${#2}-1))`
         testver=$(getLess ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+            remoteInstall ${pkg} ${verstr}
+            testver=$(getLess ${v1} ${v2} ${v3} )
         fi
         echo ${testver}
         exit 0
@@ -1511,6 +1525,7 @@ exit 0
 
 greaterThanVersion(){
 local pkg=$1
+local verstr=$2
 local v1=-1
 local v2=-1
 local v3=-1
@@ -1523,10 +1538,11 @@ local verin=`expr substr ${2} 2 $((${#2}-1))`
         v1=${verin}
         v2=-1
         v3=-1
-        testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
+        testver=$(getGreatest ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+            remoteInstall ${pkg} ${verstr}
+            testver=$(getGreatest ${v1} ${v2} ${v3} )
         fi
     fi
     #get major release and minor release x.x
@@ -1538,7 +1554,8 @@ local verin=`expr substr ${2} 2 $((${#2}-1))`
         testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+            remoteInstall ${pkg} ${verstr}
+            testver=$(getGreatest ${v1} ${v2} ${v3} )
         fi
     fi
     #get major release and minor release and patch release x.x.x
@@ -1551,7 +1568,8 @@ local verin=`expr substr ${2} 2 $((${#2}-1))`
         testver=$(getMajorGreatestOrEqual ${v1} ${v2} ${v3})
         v3=${testver##*'.'}
         if [ ${v3} -eq -1 ]; then
-            testver=${2}
+            remoteInstall ${pkg} ${verstr}
+            testver=$(getGreatest ${v1} ${v2} ${v3} )
         fi
     fi
     if [ ${testver} = ${verin} ]; then
@@ -1593,6 +1611,11 @@ fi
 local nsl=$(find ${cwd}/node_modules/$1 -maxdepth 0)
 if [ "${nsl}" != "${cwd}/node_modules/${1}" ]; then
     echo -e ${green}Creating symbolic link for ${1}${default}
+    ln -s ${nd}/$1"--"$2 ${cwd}/node_modules/$1
+else
+    echo -e ${yellow}Deleting old link for ${1}${default}
+    rm ${cwd}/node_modules/$1
+    echo -e ${green}Creating new symbolic link for ${1}${default}
     ln -s ${nd}/$1"--"$2 ${cwd}/node_modules/$1
 fi
 }

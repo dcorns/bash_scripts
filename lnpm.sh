@@ -1140,7 +1140,7 @@ local v3=-1
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
             remoteInstall ${pkg} ${verstr}
-            testver=$(getSubRelease ${v1} ${v2} ${v3} )
+            testv=$(getSubRelease ${v1} ${v2} ${v3} )
         fi
         echo ${testv}
         exit 0
@@ -1154,7 +1154,7 @@ local v3=-1
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
             remoteInstall ${pkg} ${verstr}
-            testver=$(getSubRelease ${v1} ${v2} ${v3} )
+            testv=$(getSubRelease ${v1} ${v2} ${v3} )
         fi
         echo ${testv}
         exit 0
@@ -1170,7 +1170,7 @@ local v3=-1
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
             remoteInstall ${pkg} ${verstr}
-            testver=$(getSubRelease ${v1} ${v2} ${v3} )
+            testv=$(getSubRelease ${v1} ${v2} ${v3} )
         fi
         echo ${testv}
         exit 0
@@ -1583,7 +1583,9 @@ anySubVersionX(){
 local pkg=$1
 #remove x or * and .
 local verin=`expr substr ${2} 1 $((${#2}-2))`
-    echo $(getStartsWith ${verin})
+local testvar=$(getStartsWith ${verin})
+    #echo $(getStartsWith ${verin})
+    echo ${testvar}
     exit 0
 }
 

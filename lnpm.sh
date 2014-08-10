@@ -1154,7 +1154,8 @@ local v3=-1
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
             remoteInstall ${pkg} ${verstr}
-            testv=$(getSubRelease ${v1} ${v2} ${v3} )
+            exit 0
+            #testv=$(getSubRelease ${v1} ${v2} ${v3} )
         fi
         echo ${testv}
         exit 0
@@ -1639,12 +1640,16 @@ echo 0
 }
 
 remoteInstall(){
+#repositories do not always follow semversioning rules (vows returns 0.7.0 for 0.6.x; should be only starts with 0.6.)
 local pkg=$1
 local ver=$2
+declare pkcountIn=$(setPackageCount ${pkg})
 cd ${nd}
 npm install ${pkg}@${ver}
 setupDirs
+declare pkcountOut=$(setPackageCount ${pkg})
 cd ${cwd}
+echo ${pkcountOut}-${pkcountIn}
 }
 
 setNodeDir(){

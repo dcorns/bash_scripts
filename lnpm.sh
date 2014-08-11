@@ -82,15 +82,15 @@ setupDirs(){
     #if the directory does not have a version number with name add it here otherwise leave alone
     if [ "$newdir" != "$dirname" ]; then
         mv $dirname "$newdir"
-        echo -e ${green}$dirname 'prepared'${default}
+        #echo -e ${green}$dirname 'prepared'${default}
         let preparedcount+=1
     fi
 done
-    if [ $preparedcount -gt 1 ]; then
-        echo -e ${green}$preparedcount directories prepared${default}
-    else
-        echo -e ${green}$preparedcount directory prepared${default}
-    fi
+   # if [ $preparedcount -gt 1 ]; then
+        #echo -e ${green}$preparedcount directories prepared${default}
+   # else
+        #echo -e ${green}$preparedcount directory prepared${default}
+   # fi
 }
 
 #++++++++++++++++++++++++++++++++++++++++++++++++++update+++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -596,7 +596,6 @@ convert(){
     local count=0
     local vrs=0
     local devVrs=0
-
     for dep in ${deplist[@]}; do
         #check for version in local node storage
         vrs=$(setVersion ${dep} ${depverlist[${count}]})
@@ -1154,8 +1153,7 @@ local v3=-1
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
             remoteInstall ${pkg} ${verstr}
-            exit 0
-            #testv=$(getSubRelease ${v1} ${v2} ${v3} )
+            testv=$(getSubRelease ${v1} ${v2} ${v3} )
         fi
         echo ${testv}
         exit 0
@@ -1171,7 +1169,7 @@ local v3=-1
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
             remoteInstall ${pkg} ${verstr}
-            testv=$(getSubRelease ${v1} ${v2} ${v3} )
+            testv=$(getSubRelease ${v1} ${v2} ${v3})
         fi
         echo ${testv}
         exit 0
@@ -1582,11 +1580,10 @@ exit 0
 
 anySubVersionX(){
 local pkg=$1
+local verin=$2
 #remove x or * and .
-local verin=`expr substr ${2} 1 $((${#2}-2))`
-local testvar=$(getStartsWith ${verin})
-    #echo $(getStartsWith ${verin})
-    echo ${testvar}
+local verin=`expr substr ${verin} 1 $((${#verin}-2))`
+    echo $(getStartsWith ${verin})
     exit 0
 }
 
@@ -1643,13 +1640,17 @@ remoteInstall(){
 #repositories do not always follow semversioning rules (vows returns 0.7.0 for 0.6.x; should be only starts with 0.6.)
 local pkg=$1
 local ver=$2
-declare pkcountIn=$(setPackageCount ${pkg})
+local pkcountIn=$(setPackageCount ${pkg})
 cd ${nd}
 npm install ${pkg}@${ver}
 setupDirs
-declare pkcountOut=$(setPackageCount ${pkg})
+local pkcountOut=$(setPackageCount ${pkg})
 cd ${cwd}
-echo ${pkcountOut}-${pkcountIn}
+if [ ${pkcountOut} -gt ${pkcountIn} ]; then
+    echo 1
+else
+    echo 0
+fi
 }
 
 setNodeDir(){
@@ -1714,6 +1715,10 @@ case $1 in
     ;;
     'setNodedir')
         setNodeDir
+        exit 0
+    ;;
+    'test')
+        echo $(remoteInstall  $2 $3)
         exit 0
     ;;
     *)

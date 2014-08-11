@@ -1125,21 +1125,26 @@ echo -1.-1.-1
 
 getStartsWith(){
 #get major release d
-local vin=$1
-local verstr=$2
+local pkg=$1
+local vin=$2
+local verstr=0
 local testv=0
 local vpiece=0
 local v1=-1
 local v2=-1
 local v3=-1
+local remoteAdded=0 #0 means nothing added, 1 means a package was added
     rgx='^[0-9][0-9]*$'
     if [[ ${vin} =~ $rgx ]]; then
         v1=${vin}
         testv=$(getSubRelease ${v1} ${v2} ${v3})
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
-            remoteInstall ${pkg} ${verstr}
-            testv=$(getSubRelease ${v1} ${v2} ${v3} )
+            remoteAdded=$(remoteInstall ${pkg} ${verstr})
+            #Use if statement first to keep getSubRelease from false reporting after the package is added
+            if [ ${remoteAdded} -gt 0 ]; then
+                testv=$(getSubRelease ${v1} ${v2} ${v3})
+            fi
         fi
         echo ${testv}
         exit 0
@@ -1152,10 +1157,15 @@ local v3=-1
         testv=$(getSubRelease ${v1} ${v2} ${v3})
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
-            remoteInstall ${pkg} ${verstr}
-            testv=$(getSubRelease ${v1} ${v2} ${v3} )
+            remoteAdded=$(remoteInstall ${pkg} ${verstr})
+            #Use if statement first to keep getSubRelease from false reporting after the package is added
+            echo this is remote added returned ${remoteAdded}
+            exit 0
+            if [ ${remoteAdded} -gt 0 ]; then
+                testv=$(getSubRelease ${v1} ${v2} ${v3})
+            fi
         fi
-        echo ${testv}
+        #echo ${testv}
         exit 0
     fi
     #get major release and minor release and patch release d.d.d
@@ -1168,8 +1178,11 @@ local v3=-1
         testv=$(getSubRelease ${v1} ${v2} ${v3})
         v3=${testv##*'.'}
         if [ ${v3} -eq -1 ]; then
-            remoteInstall ${pkg} ${verstr}
-            testv=$(getSubRelease ${v1} ${v2} ${v3})
+            remoteAdded=$(remoteInstall ${pkg} ${verstr})
+            #Use if statement first to keep getSubRelease from false reporting after the package is added
+            if [ ${remoteAdded} -gt 0 ]; then
+                testv=$(getSubRelease ${v1} ${v2} ${v3})
+            fi
         fi
         echo ${testv}
         exit 0
@@ -1241,6 +1254,7 @@ local v1=-1
 local v2=-1
 local v3=-1
 local testver=""
+local remoteAdded=0
 if [[ ${verin} =~ $rgx ]]; then
     v1=${verin}
     v2=-1
@@ -1248,8 +1262,11 @@ if [[ ${verin} =~ $rgx ]]; then
     testver=$(getGreatest ${v1} ${v2} ${v3})
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
-        remoteInstall ${pkg} ${ver}
-        testver=$(getGreatest ${v1} ${v2} ${v3})
+        remoteAdded=$(remoteInstall ${pkg} ${verstr})
+        #Use if statement first to keep getSubRelease from false reporting after the package is added
+        if [ ${remoteAdded} -gt 0 ]; then
+            testv=$(getGreatest ${v1} ${v2} ${v3})
+        fi
     fi
     echo ${testver}
     exit 0
@@ -1263,8 +1280,11 @@ if [[ ${verin} =~ $rgx ]]; then
     testver=$(getGreatest ${v1} ${v2} ${v3})
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
-        remoteInstall ${pkg} ${ver}
-        testver=$(getGreatest ${v1} ${v2} ${v3})
+        remoteAdded=$(remoteInstall ${pkg} ${verstr})
+        #Use if statement first to keep getSubRelease from false reporting after the package is added
+        if [ ${remoteAdded} -gt 0 ]; then
+            testv=$(getGreatest ${v1} ${v2} ${v3})
+        fi
     fi
 echo ${testver}
 exit 0
@@ -1279,8 +1299,11 @@ if [[ ${verin} =~ $rgx ]]; then
     testver=$(getGreatest ${v1} ${v2} ${v3})
     v3=${testver##*'.'}
     if [ ${v3} -eq -1 ]; then
-        remoteInstall ${pkg} ${ver}
-        testver=$(getGreatest ${v1} ${v2} ${v3})
+        remoteAdded=$(remoteInstall ${pkg} ${verstr})
+        #Use if statement first to keep getSubRelease from false reporting after the package is added
+        if [ ${remoteAdded} -gt 0 ]; then
+            testv=$(getGreatest ${v1} ${v2} ${v3})
+        fi
     fi
 echo ${testver}
 exit 0
@@ -1583,14 +1606,14 @@ local pkg=$1
 local verin=$2
 #remove x or * and .
 local verin=`expr substr ${verin} 1 $((${#verin}-2))`
-    echo $(getStartsWith ${verin})
+    echo $(getStartsWith ${pkg} ${verin})
     exit 0
 }
 
 anySubVersionD(){
 local pkg=$1
 local verin=$2
-echo $(getStartsWith ${verin})
+echo $(getStartsWith ${pkg} ${verin})
 exit 0
 }
 
@@ -1640,13 +1663,18 @@ remoteInstall(){
 #repositories do not always follow semversioning rules (vows returns 0.7.0 for 0.6.x; should be only starts with 0.6.)
 local pkg=$1
 local ver=$2
-local pkcountIn=$(setPackageCount ${pkg})
+local testcount=0
+setPackageCount ${pkg}
+#put current package count in testcount
+testcount=$((testcount+=$pkgcount))
 cd ${nd}
 npm install ${pkg}@${ver}
 setupDirs
-local pkcountOut=$(setPackageCount ${pkg})
+#set the package count again
+setPackageCount ${pkg}
 cd ${cwd}
-if [ ${pkcountOut} -gt ${pkcountIn} ]; then
+#if the package was added successfully return 1 else return a 0
+if [ ${pkgcount} -gt ${testcount} ]; then
     echo 1
 else
     echo 0
@@ -1718,7 +1746,7 @@ case $1 in
         exit 0
     ;;
     'test')
-        echo $(remoteInstall  $2 $3)
+        echo $(getStartsWith  $2 $3)
         exit 0
     ;;
     *)
